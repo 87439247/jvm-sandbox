@@ -32,10 +32,12 @@ public class SpringLoggerModule implements Module, LoadCompleted {
 
     private void buildingSpringRestController() {
         new EventWatchBuilder(moduleEventWatcher)
-                .onAnyClass()
+                .onClass("")
+//                .onAnyClass()
                 .hasAnnotationTypes("org.springframework.web.bind.annotation.RestController")
                 .onAnyBehavior()
                 .hasAnnotationTypes("org.springframework.web.bind.annotation.RequestMapping")
+
                 .onWatch(new AdviceListener() {
 
                     @Override

@@ -2,7 +2,7 @@
 <configuration scan="true" scanPeriod="10000">
 
     <!-- DEBUG模块：Servlet监控日志 -->
-    <logger name="DEBUG-SERVLET-LOGGER" level="INFO">
+    <logger name="DEBUG-SERVLET-LOGGER" level="DEBUG">
         <appender class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${user.home}/logs/sandbox/debug/servlet-monitor.log</file>
             <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">

@@ -8,6 +8,7 @@ import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
+//import com.dianping.cat.Cat;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
@@ -105,6 +106,7 @@ public class HttpHttpAccessLoggerModule implements Module, LoadCompleted {
     private void buildingHttpServletService() {
         new EventWatchBuilder(moduleEventWatcher)
                 .onClass("javax.servlet.http.HttpServlet")
+                .includeSubClasses()
                 .includeBootstrap()
                 .onBehavior("service")
                 .withParameterTypes(
@@ -226,6 +228,10 @@ public class HttpHttpAccessLoggerModule implements Module, LoadCompleted {
                 ha.userAgent,
                 cause
         );
+//        Cat.logError("测试测试",new Exception("123"));
     }
 
+    static {
+//        Cat.initializeByDomainForce("cat111");
+    }
 }

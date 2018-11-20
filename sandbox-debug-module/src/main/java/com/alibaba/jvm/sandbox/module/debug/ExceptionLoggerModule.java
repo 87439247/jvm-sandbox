@@ -36,10 +36,10 @@ public class ExceptionLoggerModule implements Module, LoadCompleted {
 
                     @Override
                     public void afterReturning(Advice advice) {
-                        exLogger.info("occur an exception: {}",
-                                advice.getTarget().getClass().getName(),
-                                advice.getTarget()
-                        );
+//                        exLogger.info("occur an exception: {}",
+//                                advice.getTarget().getClass().getName(),
+//                                advice.getTarget()
+//                        );
                     }
 
                 });

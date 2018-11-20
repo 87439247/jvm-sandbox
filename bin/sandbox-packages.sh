@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # sandbox's target dir
-SANDBOX_TARGET_DIR=../target/sandbox
+SANDBOX_TARGET_DIR=~/.sandbox
+SANDBOX_TARGET_MODULE_DIR=~/.sandbox-module
 
+rm -rf ${SANDBOX_TARGET_DIR}/*
 
 # exit shell with err_code
 # $1 : err_code
@@ -39,9 +41,10 @@ SANDBOX_VERSION=$(cat ..//sandbox-core/target/classes/com/alibaba/jvm/sandbox/ve
 echo "${SANDBOX_VERSION}" > ${SANDBOX_TARGET_DIR}/cfg/version
 
 # for example
-mkdir -p ${SANDBOX_TARGET_DIR}/example\
+mkdir -p ${SANDBOX_TARGET_MODULE_DIR}\
+    && rm -rf ${SANDBOX_TARGET_MODULE_DIR}/* \
     && cp ../sandbox-debug-module/target/sandbox-debug-module-*-jar-with-dependencies.jar\
-            ${SANDBOX_TARGET_DIR}/example/sandbox-debug-module.jar
+            ${SANDBOX_TARGET_MODULE_DIR}/sandbox-debug-module.jar
 
 # for mgr
 cp ../sandbox-mgr-module/target/sandbox-mgr-module-*-jar-with-dependencies.jar ${SANDBOX_TARGET_DIR}/module/sandbox-mgr-module.jar \
@@ -51,18 +54,18 @@ cp ../sandbox-mgr-module/target/sandbox-mgr-module-*-jar-with-dependencies.jar $
 chmod +x ${SANDBOX_TARGET_DIR}/*.sh
 
 
-# zip the sandbox.zip
-cd ../target/
-zip -r sandbox-${SANDBOX_VERSION}-bin.zip sandbox/
-cd -
+## zip the sandbox.zip
+#cd ../target/
+#zip -r sandbox-${SANDBOX_VERSION}-bin.zip sandbox/
+#cd -
+#
+## tar the sandbox.tar
+#cd ../target/
+#tar -zcvf sandbox-${SANDBOX_VERSION}-bin.tar sandbox/
+#cd -
+#
+## release stable version
+#cp ../target/sandbox-${SANDBOX_VERSION}-bin.zip ../target/sandbox-stable-bin.zip
+#cp ../target/sandbox-${SANDBOX_VERSION}-bin.tar ../target/sandbox-stable-bin.tar
 
-# tar the sandbox.tar
-cd ../target/
-tar -zcvf sandbox-${SANDBOX_VERSION}-bin.tar sandbox/
-cd -
-
-# release stable version
-cp ../target/sandbox-${SANDBOX_VERSION}-bin.zip ../target/sandbox-stable-bin.zip
-cp ../target/sandbox-${SANDBOX_VERSION}-bin.tar ../target/sandbox-stable-bin.tar
-
-echo "package sandbox-${SANDBOX_VERSION}-bin.zip finish."
+#echo "package sandbox-${SANDBOX_VERSION}-bin.zip finish."
