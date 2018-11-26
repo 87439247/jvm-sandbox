@@ -1,0 +1,41 @@
+package com.alibaba.jvm.sandbox.module.debug.util.beantrace.model;
+
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Represents a vertex of an object graph.
+ */
+public class Vertex {
+    private Class<?> clazz;
+    private String id;
+    private Set<Edge> references = new HashSet<Edge>();
+    private Set<Attribute> attributes = new HashSet<Attribute>();
+
+    public Vertex(Class<?> clazz, String id) {
+        this(clazz, id, new HashSet<Edge>(), new HashSet<Attribute>());
+    }
+
+    public Vertex(Class<?> clazz, String id, Set<Edge> references, Set<Attribute> attributes) {
+        this.id = id;
+        this.clazz = clazz;
+        this.references = references;
+        this.attributes = attributes;
+    }
+
+    public Set<Edge> getReferences() {
+        return references;
+    }
+
+    public Set<Attribute> getAttributes() {
+        return attributes;
+    }
+
+    public Class<?> getClazz() {
+        return clazz;
+    }
+
+    public String getId() {
+        return id;
+    }
+}

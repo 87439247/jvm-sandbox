@@ -237,10 +237,10 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
                         }
 
                         sb.append("IPS=").append(ip);
-                        sb.append("&VirtualIP=").append(invokeMethod(req, "getRemoteAddr"));
-                        sb.append("&Server=").append(invokeMethod(req, "getServerName"));
-                        sb.append("&Referer=").append(invokeMethod(req, "getHeader", "referer"));
-                        sb.append("&Agent=").append(invokeMethod(req, "getHeader", "user-agent"));
+                        sb.append("&VirtualIP=").append((String)invokeMethod(req, "getRemoteAddr"));
+                        sb.append("&Server=").append((String)invokeMethod(req, "getServerName"));
+                        sb.append("&Referer=").append((String)invokeMethod(req, "getHeader", "referer"));
+                        sb.append("&Agent=").append((String)invokeMethod(req, "getHeader", "user-agent"));
 
                         Cat.logEvent(type, type + ".Server", Message.SUCCESS, sb.toString());
                     }
@@ -249,7 +249,7 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
                         StringBuilder sb = new StringBuilder(256);
                         String scheme = invokeMethod(req, "getScheme");
                         sb.append(scheme.toUpperCase()).append('/');
-                        sb.append(invokeMethod(req, "getMethod")).append(' ').append(invokeMethod(req, "getRequestURI"));
+                        sb.append((String)invokeMethod(req, "getMethod")).append(' ').append((String)invokeMethod(req, "getRequestURI"));
 
                         String qs = invokeMethod(req, "getQueryString");
 

@@ -53,6 +53,11 @@
             <artifactId>commons-collections</artifactId>
             <version>3.2.1</version>
         </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.6</version>
+        </dependency>
 
         <!-- DEBUG工程独有依赖模块，所以单独配置并指定了版本 -->
         <dependency>
