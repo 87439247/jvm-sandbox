@@ -7,10 +7,7 @@ import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
-import com.alibaba.jvm.sandbox.module.debug.util.beantrace.BeanTraces;
 import com.dianping.cat.Cat;
-import com.dianping.cat.message.Message;
-import com.dianping.cat.message.Transaction;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
@@ -62,8 +59,7 @@ public class CatRocketmqModule implements Module, LoadCompleted {
                         try {
                             Object message = advice.getParameterArray()[0];
                             String topic = invokeMethod(message, "getTopic");
-                            String tags = invokeMethod(message, "getTags");
-                            Cat.logMetricForCount("rmq-produce-" + topic + "-" + tags);
+                            Cat.logMetricForCount("rmq-produce-" + topic);
                         } catch (Exception e) {
                             //black hole
                         }
@@ -73,6 +69,8 @@ public class CatRocketmqModule implements Module, LoadCompleted {
 
     private void monitorRocketmqConsumerContext() {
         new EventWatchBuilder(moduleEventWatcher)
+                .onClass("org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently").includeSubClasses()
+                .onBehavior("consumeMessage")
                 .onClass("org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly").includeSubClasses()
                 .onBehavior("consumeMessage")
                 .onWatch(new AdviceListener() {
@@ -97,7 +95,18 @@ public class CatRocketmqModule implements Module, LoadCompleted {
 
                     private void finish(Advice advice) {
                         try {
-                            Object target = advice.getTarget();
+                            Class returnClass = advice.getReturnObj().getClass();
+                            Object msg = invokeMethod(advice.getParameterArray()[0], "get", 0);
+                            Enum consume_success = Enum.valueOf(returnClass, "CONSUME_SUCCESS");
+                            String msgId = invokeMethod(msg, "getMsgId");
+                            String msgTopic = invokeMethod(msg, "getTopic");
+                            if (!consume_success.equals(advice.getReturnObj())) {
+                                Cat.logError("consume-error(id=" + msgId + ",topic=" + msgTopic + ")", null);
+                            } else {
+                                int size = invokeMethod(advice.getParameterArray()[0], "size");
+                                Cat.logEvent("ROCKETMQ-" + msgTopic, "consumed[" + msgId + "]");
+                                Cat.logMetricForCount("rmq-consumer-" + msgTopic, size);
+                            }
                         } catch (Exception e) {
                             //black hole
                         }

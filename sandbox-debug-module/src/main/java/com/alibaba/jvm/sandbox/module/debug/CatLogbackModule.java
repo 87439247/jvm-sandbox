@@ -61,12 +61,10 @@ public class CatLogbackModule implements Module, LoadCompleted {
                             Object event = advice.getParameterArray()[0];
                             int level = invokeMethod(invokeMethod(event, "getLevel"), "toInt");
                             if (level > 20000) {
-                                Throwable throwable;
+                                Throwable throwable = null;
                                 Object throwProxy = invokeMethod(event, "getThrowableProxy");
                                 if (throwProxy != null) {
                                     throwable = invokeMethod(throwProxy, "getThrowable");
-                                } else {
-                                    throwable = new UnknownError("biz-error");
                                 }
                                 String msg = invokeMethod(event, "getFormattedMessage");
                                 Cat.logError(msg, throwable);

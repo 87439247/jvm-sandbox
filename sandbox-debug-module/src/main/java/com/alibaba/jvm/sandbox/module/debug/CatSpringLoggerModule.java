@@ -61,7 +61,7 @@ public class CatSpringLoggerModule implements Module, LoadCompleted {
             if (advice.getBehavior().getName().equals("<init>")) {
                 methodName = "constructor";
             }
-            Transaction t = Cat.newTransaction("SpringMethod", advice.getTarget().getClass().getName() + "." + methodName);
+            Transaction t = Cat.newTransaction("SPRING", advice.getTarget().getClass().getName() + "." + methodName);
             advice.attach(t);
         }
 
@@ -80,6 +80,7 @@ public class CatSpringLoggerModule implements Module, LoadCompleted {
             try {
                 if (advice.isThrows()) {
                     t.setStatus(advice.getThrowable());
+                    Cat.logError(advice.getThrowable());
                 }
                 if (advice.isReturn()) {
                     t.setSuccessStatus();
