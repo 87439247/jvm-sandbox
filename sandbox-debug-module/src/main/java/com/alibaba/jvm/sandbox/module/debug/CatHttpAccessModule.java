@@ -28,6 +28,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
+
 
 /**
  * 基于HTTP-SERVLET(v2.4)规范的HTTP访问日志
@@ -352,16 +354,6 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
 
     static {
         Cat.initializeByDomainForce("cat111");
-    }
-
-    /*
-     * 泛型转换方法调用
-     * 底层使用apache common实现
-     */
-    private static <T> T invokeMethod(final Object object,
-                                      final String methodName,
-                                      final Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        return (T) MethodUtils.invokeMethod(object, methodName, args);
     }
 
 }

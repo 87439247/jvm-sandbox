@@ -1,8 +1,5 @@
 package com.alibaba.jvm.sandbox.module.debug;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.spi.ThrowableProxy;
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
@@ -11,14 +8,13 @@ import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
-import com.dianping.cat.logback.CatLogbackAppender;
-import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
-import java.lang.reflect.InvocationTargetException;
+
+import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 
 /**
@@ -60,14 +56,14 @@ public class CatLogbackModule implements Module, LoadCompleted {
                         try {
                             Object event = advice.getParameterArray()[0];
                             int level = invokeMethod(invokeMethod(event, "getLevel"), "toInt");
-                            if (level > 20000) {
+                            if (level >= 40000) {
                                 Throwable throwable = null;
                                 Object throwProxy = invokeMethod(event, "getThrowableProxy");
                                 if (throwProxy != null) {
                                     throwable = invokeMethod(throwProxy, "getThrowable");
                                 }
                                 String msg = invokeMethod(event, "getFormattedMessage");
-                                Cat.logError(msg, throwable);
+                                Cat.logError("[ERROR] " + msg, throwable);
                             }
                         } catch (Exception ex) {
                             //黑洞
@@ -84,15 +80,4 @@ public class CatLogbackModule implements Module, LoadCompleted {
     static {
         Cat.initializeByDomainForce("cat111");
     }
-
-    /*
-     * 泛型转换方法调用
-     * 底层使用apache common实现
-     */
-    private static <T> T invokeMethod(final Object object,
-                                      final String methodName,
-                                      final Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        return (T) MethodUtils.invokeMethod(object, methodName, args);
-    }
-
 }

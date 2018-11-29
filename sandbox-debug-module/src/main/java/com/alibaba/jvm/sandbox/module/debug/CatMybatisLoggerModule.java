@@ -12,14 +12,14 @@ import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
+
+import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 /**
  * 基于JDBC的SQL日志
@@ -91,14 +91,4 @@ public class CatMybatisLoggerModule implements Module, LoadCompleted {
                 });
     }
 
-
-    /*
-     * 泛型转换方法调用
-     * 底层使用apache common实现
-     */
-    private static <T> T invokeMethod(final Object object,
-                                      final String methodName,
-                                      final Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        return (T) MethodUtils.invokeMethod(object, methodName, args);
-    }
 }
