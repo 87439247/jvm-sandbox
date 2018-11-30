@@ -18,9 +18,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
 
 @MetaInfServices(Module.class)
 @Information(id = "cat-rocketmq", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatRocketmqModule implements Module, LoadCompleted {
-
-    private final Logger smLogger = LoggerFactory.getLogger(this.getClass());
+public class CatRocketmqModule extends CatModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;

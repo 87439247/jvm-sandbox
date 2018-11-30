@@ -20,9 +20,7 @@ import javax.annotation.Resource;
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-spring-logger", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatSpringLoggerModule implements Module, LoadCompleted {
-
-    private final Logger spLogger = LoggerFactory.getLogger(this.getClass());
+public class CatSpringLoggerModule extends CatModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;

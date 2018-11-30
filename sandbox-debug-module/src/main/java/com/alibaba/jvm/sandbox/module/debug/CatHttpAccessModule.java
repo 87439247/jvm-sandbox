@@ -38,9 +38,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-http-access", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatHttpAccessModule implements Module, LoadCompleted {
-
-    private final Logger stLogger = LoggerFactory.getLogger(this.getClass());
+public class CatHttpAccessModule extends CatModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;
@@ -54,61 +52,22 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
         excludeUrls.add("favicon.ico");
     }
 
-    /**
-     * HTTP处理步骤
-     * {@code
-     * HttpServlet.service():BEGIN
-     * -> HttpServletResponse.[setState/sendError]():BEGIN
-     * -> HttpServletResponse.[setState/sendError]():FINISH
-     * -> HttpServlet.service():FINISH
-     * }
-     */
-//    enum HttpProcessStep {
-//        waitingHttpServletServiceBegin,
-//        waitingHttpServletResponseState,
-//        waitingHttpServletServiceFinish
-//    }
 
-    //    /**
-//     * HTTP接入信息
-//     */
+    /**
+     * HTTP接入信息
+     */
     class HttpAccess {
         Transaction transaction;
         int status;
         long beginTimestamp;
-//        MonitorResponse res;
     }
 
-    // 安排一个哨兵，用于观察Servlet执行步骤
-//    private final Sentry<HttpProcessStep> sentry = new Sentry<HttpProcessStep>(waitingHttpServletServiceBegin);
 
     @Override
     public void loadCompleted() {
-//        buildingHttpStatusFillBack();
         buildingHttpServletService();
     }
 
-//    /*
-//     * HTTP状态码回填
-//     * 因为在3.0之前你都很难拿到HTTP的应答状态，必须拦截HttpServletResponse的setStatus/sendError才能拿到
-//     * 而且还必须要考虑到200这种状态码为默认状态码的情况
-//     */
-//    private void buildingHttpStatusFillBack() {
-//        new EventWatchBuilder(moduleEventWatcher)
-//                .onClass("javax.servlet.http.HttpServletResponse")
-//                /**/.includeSubClasses()
-//                .onBehavior("setStatus")
-//                /**/.withParameterTypes(int.class)
-//                .onBehavior("sendError")
-//                /**/.withParameterTypes(int.class)
-//                /**/.withParameterTypes(int.class, String.class)
-//                .onWatch(new AdviceListener() {
-//                    @Override
-//                    public void before(Advice advice) {
-//
-//                    }
-//                });
-//    }
 
     /*
      * 拦截HttpServlet的服务请求入口
@@ -239,10 +198,10 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
                         }
 
                         sb.append("IPS=").append(ip);
-                        sb.append("&VirtualIP=").append((String)invokeMethod(req, "getRemoteAddr"));
-                        sb.append("&Server=").append((String)invokeMethod(req, "getServerName"));
-                        sb.append("&Referer=").append((String)invokeMethod(req, "getHeader", "referer"));
-                        sb.append("&Agent=").append((String)invokeMethod(req, "getHeader", "user-agent"));
+                        sb.append("&VirtualIP=").append((String) invokeMethod(req, "getRemoteAddr"));
+                        sb.append("&Server=").append((String) invokeMethod(req, "getServerName"));
+                        sb.append("&Referer=").append((String) invokeMethod(req, "getHeader", "referer"));
+                        sb.append("&Agent=").append((String) invokeMethod(req, "getHeader", "user-agent"));
 
                         Cat.logEvent(type, type + ".Server", Message.SUCCESS, sb.toString());
                     }
@@ -251,7 +210,7 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
                         StringBuilder sb = new StringBuilder(256);
                         String scheme = invokeMethod(req, "getScheme");
                         sb.append(scheme.toUpperCase()).append('/');
-                        sb.append((String)invokeMethod(req, "getMethod")).append(' ').append((String)invokeMethod(req, "getRequestURI"));
+                        sb.append((String) invokeMethod(req, "getMethod")).append(' ').append((String) invokeMethod(req, "getRequestURI"));
 
                         String qs = invokeMethod(req, "getQueryString");
 
@@ -321,9 +280,8 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
                      * 判断是否请求对称结束
                      *
                      * @param advice 通知
-                     * @return TRUE:对称结束;FALSE:非对称结束
                      */
-                    private boolean finishing(Advice advice) {
+                    private void finishing(Advice advice) {
                         HttpAccess ha = advice.attachment();
                         final Object req = advice.getParameterArray()[0];
                         final Object response = advice.getParameterArray()[1];
@@ -346,14 +304,8 @@ public class CatHttpAccessModule implements Module, LoadCompleted {
                                 e.printStackTrace();
                             }
                         }
-                        return true;
                     }
 
                 });
     }
-
-    static {
-        Cat.initializeByDomainForce("cat111");
-    }
-
 }

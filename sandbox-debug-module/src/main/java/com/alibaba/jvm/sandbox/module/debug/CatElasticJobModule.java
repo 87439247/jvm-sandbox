@@ -21,9 +21,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
 
 @MetaInfServices(Module.class)
 @Information(id = "cat-elastic-job", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatElasticJobModule implements Module, LoadCompleted {
-
-    private final Logger smLogger = LoggerFactory.getLogger(this.getClass());
+public class CatElasticJobModule extends CatModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;
@@ -33,7 +31,7 @@ public class CatElasticJobModule implements Module, LoadCompleted {
         monitorElasticJobContext();
     }
 
-    // 监控org.apache.ibatis.executor.ReuseExecutor的所有实现类
+
     private void monitorElasticJobContext() {
         new EventWatchBuilder(moduleEventWatcher)
                 .onClass("com.dangdang.ddframe.job.executor.AbstractElasticJobExecutor").includeSubClasses()

@@ -24,7 +24,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-logback", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatLogbackModule implements Module, LoadCompleted {
+public class CatLogbackModule extends CatModule {
 
     private final Logger stLogger = LoggerFactory.getLogger(this.getClass());
 
@@ -33,7 +33,6 @@ public class CatLogbackModule implements Module, LoadCompleted {
 
     @Override
     public void loadCompleted() {
-//        buildingHttpStatusFillBack();
         buildingLogbackLogger();
     }
 
@@ -54,9 +53,10 @@ public class CatLogbackModule implements Module, LoadCompleted {
                     @Override
                     public void afterReturning(Advice advice) {
                         try {
+                            final int errorLevel = 40000;
                             Object event = advice.getParameterArray()[0];
                             int level = invokeMethod(invokeMethod(event, "getLevel"), "toInt");
-                            if (level >= 40000) {
+                            if (level >= errorLevel) {
                                 Throwable throwable = null;
                                 Object throwProxy = invokeMethod(event, "getThrowableProxy");
                                 if (throwProxy != null) {
@@ -75,9 +75,5 @@ public class CatLogbackModule implements Module, LoadCompleted {
 
                     }
                 });
-    }
-
-    static {
-        Cat.initializeByDomainForce("cat111");
     }
 }
