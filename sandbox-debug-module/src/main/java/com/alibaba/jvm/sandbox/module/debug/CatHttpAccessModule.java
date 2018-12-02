@@ -1,7 +1,6 @@
 package com.alibaba.jvm.sandbox.module.debug;
 
 import com.alibaba.jvm.sandbox.api.Information;
-import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
@@ -17,10 +16,7 @@ import com.dianping.cat.message.internal.DefaultTransaction;
 import com.dianping.cat.status.http.HttpStats;
 import com.dianping.cat.util.Joiners;
 import com.dianping.cat.util.UrlParser;
-import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import java.lang.reflect.InvocationTargetException;
@@ -34,7 +30,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
 /**
  * 基于HTTP-SERVLET(v2.4)规范的HTTP访问日志
  *
- * @author luanjia@taobao.com
+ * @author yuanyue@staff.hexun.com
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-http-access", version = "0.0.1", author = "yuanyue@staff.hexun.com")
@@ -44,12 +40,17 @@ public class CatHttpAccessModule extends CatModule {
     private ModuleEventWatcher moduleEventWatcher;
 
 
-    private static Set<String> excludeUrls = new HashSet<String>();
+    private static Set<String> excludeUrls = new HashSet<>();
 
-    private static Set<String> excludePrefixes = new HashSet<String>();
+    private static Set<String> excludePrefixes = new HashSet<>();
 
     static {
         excludeUrls.add("favicon.ico");
+    }
+
+    @Override
+    String getCatType() {
+        return CatConstants.TYPE_URL;
     }
 
 
@@ -91,8 +92,8 @@ public class CatHttpAccessModule extends CatModule {
 
                     /**
                      * 排除的uri
-                     * @param uri
-                     * @return
+                     * @param uri uri
+                     * @return 是否是排除的
                      */
                     private boolean excludeURI(String uri) {
                         try {
@@ -188,7 +189,7 @@ public class CatHttpAccessModule extends CatModule {
 
                     private void logRequestClientInfo(Object req, String type) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
                         StringBuilder sb = new StringBuilder(1024);
-                        String ip = "";
+                        String ip;
                         String ipForwarded = invokeMethod(req, "getHeader", "x-forwarded-for");
 
                         if (ipForwarded == null) {
@@ -245,7 +246,7 @@ public class CatHttpAccessModule extends CatModule {
 
 
                         if (top) {
-                            type = CatConstants.TYPE_URL;
+                            type = getCatType();
                             logTraceMode(req);
                         } else {
                             type = CatConstants.TYPE_URL_FORWARD;
@@ -290,7 +291,7 @@ public class CatHttpAccessModule extends CatModule {
                             if (advice.getThrowable() != null) {
                                 ha.transaction.setStatus(advice.getThrowable());
                             }
-                        } catch (Throwable e) {
+                        } catch (Exception e) {
                             ha.status = 500;
                             ha.transaction.setStatus(e);
                             Cat.logError(e);
@@ -301,11 +302,13 @@ public class CatHttpAccessModule extends CatModule {
                                 int status = invokeMethod(response, "getStatus");
                                 HttpStats.currentStatsHolder().doRequestStats(System.currentTimeMillis() - ha.beginTimestamp, ha.status > 0 ? ha.status : status);
                             } catch (Exception e) {
-                                e.printStackTrace();
+                                stLogger.error("cat http access log error", e);
                             }
                         }
                     }
 
                 });
     }
+
+
 }

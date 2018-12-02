@@ -26,8 +26,6 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
 @Information(id = "cat-logback", version = "0.0.1", author = "yuanyue@staff.hexun.com")
 public class CatLogbackModule extends CatModule {
 
-    private final Logger stLogger = LoggerFactory.getLogger(this.getClass());
-
     @Resource
     private ModuleEventWatcher moduleEventWatcher;
 
@@ -72,8 +70,13 @@ public class CatLogbackModule extends CatModule {
 
                     @Override
                     public void afterThrowing(Advice advice) {
-
+                        // no
                     }
                 });
+    }
+
+    @Override
+    String getCatType() {
+        return null;
     }
 }

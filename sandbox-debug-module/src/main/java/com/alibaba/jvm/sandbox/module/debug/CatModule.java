@@ -13,4 +13,5 @@ public abstract class CatModule implements Module, LoadCompleted {
 
     protected Logger stLogger = LoggerFactory.getLogger(this.getClass());
 
+    abstract String getCatType();
 }

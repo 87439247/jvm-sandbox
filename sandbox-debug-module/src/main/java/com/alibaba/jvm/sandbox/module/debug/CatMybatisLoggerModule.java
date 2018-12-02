@@ -1,7 +1,6 @@
 package com.alibaba.jvm.sandbox.module.debug;
 
 import com.alibaba.jvm.sandbox.api.Information;
-import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
@@ -13,8 +12,6 @@ import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.kohsuke.MetaInfServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import java.util.HashMap;
@@ -52,7 +49,7 @@ public class CatMybatisLoggerModule extends CatModule {
                     public void before(Advice advice) throws Throwable {
                         Object mappedStatement = advice.getParameterArray()[0];
                         String id = invokeMethod(mappedStatement, "getId");
-                        Transaction t = Cat.newTransaction("MYBATIS", id);
+                        Transaction t = Cat.newTransaction(getCatType(), id);
                         advice.attach(t);
                     }
 
@@ -73,13 +70,13 @@ public class CatMybatisLoggerModule extends CatModule {
                                 t.setStatus(advice.getThrowable());
                                 Object param = advice.getParameterArray()[1];
                                 HashMap map = (HashMap) FieldUtils.getField(advice.getTarget().getClass(), "statementMap", true).get(advice.getTarget());
-                                Cat.logEvent("MYBATIS", "SQL", "500", BeanTraces.printBeanTraceAscii(map.keySet().toArray()).toString());
-                                Cat.logEvent("MYBATIS", "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
+                                Cat.logEvent(getCatType(), "SQL", "500", BeanTraces.printBeanTraceAscii(map.keySet().toArray()).toString());
+                                Cat.logEvent(getCatType(), "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
                                 Cat.logError(advice.getThrowable());
                             } else {
                                 t.setStatus(Message.SUCCESS);
                             }
-                        } catch (Throwable e) {
+                        } catch (Exception e) {
                             t.setStatus(e);
                             Cat.logError(e);
                         } finally {
@@ -89,4 +86,8 @@ public class CatMybatisLoggerModule extends CatModule {
                 });
     }
 
+    @Override
+    String getCatType() {
+        return "MYBATIS";
+    }
 }

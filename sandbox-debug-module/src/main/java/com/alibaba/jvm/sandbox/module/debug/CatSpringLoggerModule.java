@@ -59,7 +59,7 @@ public class CatSpringLoggerModule extends CatModule {
             if (advice.getBehavior().getName().equals("<init>")) {
                 methodName = "constructor";
             }
-            Transaction t = Cat.newTransaction("SPRING", advice.getTarget().getClass().getName() + "." + methodName);
+            Transaction t = Cat.newTransaction(getCatType(), advice.getTarget().getClass().getName() + "." + methodName);
             advice.attach(t);
         }
 
@@ -93,4 +93,9 @@ public class CatSpringLoggerModule extends CatModule {
         }
 
     };
+
+    @Override
+    String getCatType() {
+        return "SPRING";
+    }
 }
