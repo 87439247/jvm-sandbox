@@ -88,6 +88,6 @@ public class CatMybatisLoggerModule extends CatModule {
 
     @Override
     String getCatType() {
-        return "MYBATIS";
+        return "SQL";
     }
 }
