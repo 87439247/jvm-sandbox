@@ -96,6 +96,6 @@ public class CatSpringLoggerModule extends CatModule {
 
     @Override
     String getCatType() {
-        return "SPRING";
+        return "Service";
     }
 }
