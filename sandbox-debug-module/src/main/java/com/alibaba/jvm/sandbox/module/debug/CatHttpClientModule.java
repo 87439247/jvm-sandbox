@@ -17,6 +17,7 @@ import javax.annotation.Resource;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
+import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
 @MetaInfServices(Module.class)
 @Information(id = "cat-httpclient", version = "0.0.1", author = "yuanyue@staff.hexun.com")
@@ -92,55 +93,6 @@ public class CatHttpClientModule extends CatModule {
                         }
                     }
                 });
-    }
-
-    private static ConcurrentSet<Character> words = new ConcurrentSet<>();
-
-    private static ConcurrentSet<Character> numbers = new ConcurrentSet<>();
-
-    static {
-        String word = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/?&=_";
-        String number = "0123456789";
-        for (char w : word.toCharArray()) {
-            words.add(w);
-        }
-        for (char n : number.toCharArray()) {
-            numbers.add(n);
-        }
-    }
-
-    private static String rebuildPath(String uri) {
-        int start = uri.indexOf("://");
-        if (start >= 0) {
-            int pathStart = uri.indexOf("/", start + 3);
-            uri = uri.substring(pathStart);
-        }
-        StringBuilder builder = new StringBuilder();
-        boolean preIsNum = false;
-        final String num = "(NUM)";
-        for (char c : uri.toCharArray()) {
-
-            if (words.contains(c)) {
-                if (preIsNum) {
-                    preIsNum = false;
-                    builder.append(num);
-                }
-                builder.append(c);
-            } else if (numbers.contains(c)) {
-                preIsNum = true;
-            } else {
-                if (preIsNum) {
-                    preIsNum = false;
-                    builder.append(num);
-                }
-                final char sep = 'I';
-                builder.append(sep);
-            }
-        }
-        if (preIsNum) {
-            builder.append(num);
-        }
-        return builder.toString();
     }
 
 

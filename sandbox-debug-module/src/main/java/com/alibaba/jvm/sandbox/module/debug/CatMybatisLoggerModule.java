@@ -37,12 +37,12 @@ public class CatMybatisLoggerModule extends CatModule {
 
     // 监控org.apache.ibatis.executor.ReuseExecutor的所有实现类
     private void monitorMybatisMappedStatement() {
+        //public int update(MappedStatement ms, Object parameter) throws SQLException {
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("org.apache.ibatis.executor.ReuseExecutor").includeSubClasses()
-                .onBehavior("doQuery*")
-                /**/.withParameterTypes("org.apache.ibatis.mapping.MappedStatement", "java.lang.Object")
-                .onBehavior("doUpdate")
-                /**/.withParameterTypes("org.apache.ibatis.mapping.MappedStatement", "java.lang.Object")
+                .onClass("org.apache.ibatis.executor.BaseExecutor")
+                .onBehavior("update")
+                .withParameterTypes("org.apache.ibatis.mapping.MappedStatement", "java.lang.Object")
+
                 .onWatch(new AdviceListener() {
 
                     @Override
@@ -65,22 +65,73 @@ public class CatMybatisLoggerModule extends CatModule {
 
                     private void finish(Advice advice) {
                         Transaction t = advice.attachment();
-                        try {
-                            if (advice.getThrowable() != null) {
-                                t.setStatus(advice.getThrowable());
-                                Object param = advice.getParameterArray()[1];
-                                HashMap map = (HashMap) FieldUtils.getField(advice.getTarget().getClass(), "statementMap", true).get(advice.getTarget());
-                                Cat.logEvent(getCatType(), "SQL", "500", BeanTraces.printBeanTraceAscii(map.keySet().toArray()).toString());
-                                Cat.logEvent(getCatType(), "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
-                                Cat.logError(advice.getThrowable());
-                            } else {
-                                t.setStatus(Message.SUCCESS);
+                        if (t != null) {
+                            try {
+                                if (advice.getThrowable() != null) {
+                                    t.setStatus(advice.getThrowable());
+                                    Object param = advice.getParameterArray()[1];
+                                    HashMap map = (HashMap) FieldUtils.getField(advice.getTarget().getClass(), "statementMap", true).get(advice.getTarget());
+                                    Cat.logEvent(getCatType(), "SQL", "500", BeanTraces.printBeanTraceAscii(map.keySet().toArray()).toString());
+                                    Cat.logEvent(getCatType(), "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
+                                    Cat.logError(advice.getThrowable());
+                                } else {
+                                    t.setStatus(Message.SUCCESS);
+                                }
+                            } catch (Exception e) {
+                                t.setStatus(e);
+                                Cat.logError(e);
+                            } finally {
+                                t.complete();
                             }
-                        } catch (Exception e) {
-                            t.setStatus(e);
-                            Cat.logError(e);
-                        } finally {
-                            t.complete();
+                        }
+                    }
+                });
+
+        //public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+        new EventWatchBuilder(moduleEventWatcher)
+                .onClass("org.apache.ibatis.executor.BaseExecutor")
+                .onBehavior("query")
+                .withParameterTypes("org.apache.ibatis.mapping.MappedStatement", "java.lang.Object", "org.apache.ibatis.session.RowBounds", "org.apache.ibatis.session.ResultHandler", "org.apache.ibatis.cache.CacheKey", "org.apache.ibatis.mapping.BoundSql")
+
+                .onWatch(new AdviceListener() {
+
+                    @Override
+                    public void before(Advice advice) throws Throwable {
+                        Object mappedStatement = advice.getParameterArray()[0];
+                        String id = invokeMethod(mappedStatement, "getId");
+                        Transaction t = Cat.newTransaction(getCatType(), id);
+                        advice.attach(t);
+                    }
+
+                    @Override
+                    public void afterReturning(Advice advice) {
+                        finish(advice);
+                    }
+
+                    @Override
+                    public void afterThrowing(Advice advice) {
+                        finish(advice);
+                    }
+
+                    private void finish(Advice advice) {
+                        Transaction t = advice.attachment();
+                        if (t != null) {
+                            try {
+                                if (advice.getThrowable() != null) {
+                                    t.setStatus(advice.getThrowable());
+                                    Object boundSql = advice.getParameterArray()[5];
+                                    String sql = invokeMethod(boundSql, "getSql");
+                                    Cat.logEvent(getCatType(), "SQL", "500", sql);
+                                    Cat.logError(advice.getThrowable());
+                                } else {
+                                    t.setStatus(Message.SUCCESS);
+                                }
+                            } catch (Exception e) {
+                                t.setStatus(e);
+                                Cat.logError(e);
+                            } finally {
+                                t.complete();
+                            }
                         }
                     }
                 });

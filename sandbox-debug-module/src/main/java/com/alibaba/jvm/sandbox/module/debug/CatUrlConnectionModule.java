@@ -10,6 +10,7 @@ import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
 import io.netty.util.internal.ConcurrentSet;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
@@ -17,7 +18,9 @@ import javax.annotation.Resource;
 import java.net.URI;
 import java.net.URL;
 
+import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
+import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
 @MetaInfServices(Module.class)
 @Information(id = "cat-url-connection", version = "0.0.1", author = "yuanyue@staff.hexun.com")
@@ -33,23 +36,43 @@ public class CatUrlConnectionModule extends CatModule {
 
 
     /**
-     * protected final CloseableHttpResponse doExecute(HttpHost target, HttpRequest request, HttpContext context) throws IOException, ClientProtocolException
+     * com.sun.net.ssl.internal.www.protocol.https.HttpsURLConnectionOldImpl
+     * sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection
+     * sun.plugin.net.protocol.jar.CachedJarURLConnection
+     * com.sun.net.ssl.internal.www.protocol.https.DelegateHttpsURLConnection
+     * com.sun.deploy.net.protocol.javascript.JavaScriptURLConnection
+     * com.sun.jnlp.JNLPCachedJarURLConnection
+     * sun.net.www.protocol.mailto.MailToURLConnection
+     * com.sun.webkit.network.DirectoryURLConnection
+     * com.sun.webkit.network.data.DataURLConnection
+     * java.net.HttpURLConnection
+     * com.sun.net.ssl.HttpsURLConnection
+     * sun.net.www.protocol.https.HttpsURLConnectionImpl
+     * com.sun.webkit.network.about.AboutURLConnection
+     * sun.net.www.protocol.jar.JarURLConnection
+     * sun.net.www.URLConnection
+     * sun.net.www.protocol.file.FileURLConnection
+     * javax.net.ssl.HttpsURLConnection
+     * com.sun.deploy.net.protocol.chrome.ChromeURLConnection
+     * sun.net.www.protocol.http.HttpURLConnection
+     * sun.net.www.protocol.ftp.FtpURLConnection
+     * java.net.JarURLConnection
+     * sun.net.www.protocol.https.DelegateHttpsURLConnection
+     * com.sun.deploy.net.protocol.about.AboutURLConnection
      */
     private void monitorUrlConnection() {
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("java.net.URLConnection")
+                .onClass("sun.net.www.http.HttpClient")
                 .includeBootstrap()
-                .includeSubClasses()
-                .onBehavior("getInputStream")
+                .onBehavior("parseHTTP")
+
                 .onWatch(new AdviceListener() {
 
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        Object urlConnection = advice.getTarget();
-                        Object url = invokeMethod(urlConnection, "getURI");
-                        String host = invokeMethod(url, "getHost");
-                        String path = invokeMethod(url, "getPath");
-                        Transaction transaction = Cat.newTransaction(getCatType() + "-" + host, path);
+                        Object urlConnection = advice.getParameterArray()[2];
+                        URL url = (URL) FieldUtils.getField(urlConnection.getClass(), "url", true).get(urlConnection);
+                        Transaction transaction = Cat.newTransaction(getCatType() + "-" + url.getHost(), rebuildPath(url.getPath()));
                         advice.attach(transaction);
                     }
 
@@ -62,39 +85,7 @@ public class CatUrlConnectionModule extends CatModule {
                     public void afterThrowing(Advice advice) {
                         finish(advice);
                     }
-
-                    private void finish(Advice advice) {
-                        Transaction transaction = advice.attachment();
-                        try {
-                            if (advice.getThrowable() != null) {
-                                transaction.setStatus(advice.getThrowable());
-                                Cat.logError(advice.getThrowable());
-                            } else {
-                                transaction.setStatus(Message.SUCCESS);
-                            }
-                        } catch (Exception e) {
-                            transaction.setStatus(e);
-                            Cat.logError(e);
-                        } finally {
-                            transaction.complete();
-                        }
-                    }
                 });
-    }
-
-    private static ConcurrentSet<Character> words = new ConcurrentSet<>();
-
-    private static ConcurrentSet<Character> numbers = new ConcurrentSet<>();
-
-    static {
-        String word = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/?&=_";
-        String number = "0123456789";
-        for (char w : word.toCharArray()) {
-            words.add(w);
-        }
-        for (char n : number.toCharArray()) {
-            numbers.add(n);
-        }
     }
 
 
