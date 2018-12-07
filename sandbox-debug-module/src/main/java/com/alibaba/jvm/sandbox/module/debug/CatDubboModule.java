@@ -6,16 +6,17 @@ import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
+import com.alibaba.jvm.sandbox.module.debug.util.beantrace.BeanTraces;
 import com.dianping.cat.Cat;
+import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
+import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
-import java.net.URL;
 
-import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 @MetaInfServices(Module.class)
@@ -27,52 +28,118 @@ public class CatDubboModule extends CatModule {
 
     @Override
     public void loadCompleted() {
-        monitorDubbo();
+        monitorDubboOld();
+        monitorDubboNewVersion();
+    }
+
+    class Event {
+        Event(Object url, String host, Transaction transaction) {
+            this.url = url;
+            this.host = host;
+            this.transaction = transaction;
+        }
+
+        String host;
+        Object url;
+        Transaction transaction;
+    }
+
+    /**
+     * public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+     */
+    private void monitorDubboOld() {
+        new EventWatchBuilder(moduleEventWatcher)
+                .onClass("com.alibaba.dubbo.monitor.support.MonitorFilter")
+                .onBehavior("invoke")
+                .withParameterTypes("com.alibaba.dubbo.rpc.Invoker", "com.alibaba.dubbo.rpc.Invocation")
+
+                .onWatch(new AdviceListener() {
+                    @Override
+                    public void before(Advice advice) throws Throwable {
+                        final Class rpcContextClass = ClassUtils.getClass("com.alibaba.dubbo.rpc.RpcContext");
+                        CatDubboModule.this.before(advice, rpcContextClass);
+                    }
+
+                    @Override
+                    public void afterReturning(Advice advice) {
+                        after(advice);
+                    }
+
+                    @Override
+                    public void afterThrowing(Advice advice) {
+                        after(advice);
+                    }
+                });
+    }
+
+    /**
+     * public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+     */
+    private void monitorDubboNewVersion() {
+        new EventWatchBuilder(moduleEventWatcher)
+                .onClass("org.apache.dubbo.monitor.support.MonitorFilter")
+                .onBehavior("invoke")
+                .withParameterTypes("org.apache.dubbo.rpc.Invoker", "org.apache.dubbo.rpc.Invocation")
+                .onWatch(new AdviceListener() {
+                    @Override
+                    public void before(Advice advice) throws Throwable {
+                        final Class rpcContextClass = ClassUtils.getClass("org.apache.dubbo.rpc.RpcContext");
+                        CatDubboModule.this.before(advice, rpcContextClass);
+                    }
+
+                    @Override
+                    public void afterReturning(Advice advice) {
+                        after(advice);
+                    }
+
+                    @Override
+                    public void afterThrowing(Advice advice) {
+                        after(advice);
+                    }
+                });
     }
 
 
-    /**
-     *
-     */
-    private void monitorDubbo() {
-        try {
-            new EventWatchBuilder(moduleEventWatcher)
-                    .onClass("org.apache.dubbo.monitor.support.MonitorFilter")
-                    .onBehavior("invoke")
+    private void before(Advice advice, Class rpcContextClass) throws Exception {
+        Object invoker = advice.getParameterArray()[0];
+        Object invocation = advice.getParameterArray()[1];
+        Object rpcContext = MethodUtils.invokeStaticMethod(rpcContextClass, "getContext");
+        boolean isConsumer = invokeMethod(rpcContext, "isConsumerSide");
+        Object requestURL = invokeMethod(invoker, "getUrl");
 
-                    .onWatch(new AdviceListener() {
+        String host = invokeMethod(requestURL, "getHost");
+        String path = invokeMethod(requestURL, "getPath");
+        String methodName = invokeMethod(invocation, "getMethodName");
+        Transaction transaction = Cat.newTransaction(getCatType() + (isConsumer ? "-c-" : "-p-") + host, path + "." + methodName);
+        advice.attach(new Event(requestURL, host, transaction));
+    }
 
-                        final Class rpcContextClass = ClassUtils.getClass("com.alibaba.dubbo.rpc.RpcContext");
-
-                        @Override
-                        public void before(Advice advice) throws Throwable {
-                            Object invoker = advice.getParameterArray()[0];
-                            Object rpcContext = MethodUtils.invokeStaticMethod(rpcContextClass, "getContext");
-                            boolean isConsumer = invokeMethod(rpcContext, "isConsumerSide");
-                            URL requestURL = invokeMethod(invoker, "getUrl");
-
-                            final String hostName = requestURL.getHost();
-                            Transaction transaction;
-                            if (isConsumer) {
-                                transaction = Cat.newTransaction(getCatType() + "-c-" + hostName, requestURL.getPath());
-                            } else {
-                                transaction = Cat.newTransaction(getCatType() + "-p-" + hostName, requestURL.getPath());
-                            }
-                            advice.attach(transaction);
-                        }
-
-                        @Override
-                        public void afterReturning(Advice advice) {
-                            finish(advice);
-                        }
-
-                        @Override
-                        public void afterThrowing(Advice advice) {
-                            finish(advice);
-                        }
-                    });
-        } catch (ClassNotFoundException e) {
-            stLogger.error("class not found ", e);
+    private void after(Advice advice) {
+        Event event = advice.attachment();
+        if (event != null) {
+            try {
+                Object returnObj = advice.getReturnObj();
+                Throwable throwable = advice.getThrowable();
+                if (throwable == null) {
+                    throwable = invokeMethod(returnObj, "getException");
+                }
+                if (throwable != null) {
+                    String callUrl = invokeMethod(event.url, "toString");
+                    Object[] args = invokeMethod(advice.getParameterArray()[1], "getArguments");
+                    StringBuilderWriter writer = BeanTraces.printBeanTraceAscii(args);
+                    Cat.logEvent(getCatType(), "url", "500", callUrl);
+                    Cat.logEvent(getCatType(), "params", "500", writer.toString());
+                    Cat.logError(throwable);
+                    event.transaction.setStatus(throwable);
+                } else {
+                    event.transaction.setStatus(Message.SUCCESS);
+                }
+            } catch (Exception e) {
+                event.transaction.setStatus(e);
+                Cat.logError(e);
+            } finally {
+                event.transaction.complete();
+            }
         }
     }
 
