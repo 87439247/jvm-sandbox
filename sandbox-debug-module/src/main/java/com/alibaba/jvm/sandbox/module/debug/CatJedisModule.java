@@ -25,13 +25,14 @@ public class CatJedisModule extends CatModule {
     public void loadCompleted() {
         monitorJedisMethod();
     }
+
     /**
-     *
+     * 新老jedis版本JedisCommand命名空间不同
      */
     private void monitorJedisMethod() {
 
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("redis.clients.jedis.JedisCommands").includeSubClasses()
+                .onClass("redis.clients.**.JedisCommands").includeSubClasses()
                 .onBehavior("zcount").onBehavior("sunionstore").onBehavior("zunionstore")
                 .onBehavior("del").onBehavior("zinterstore").onBehavior("echo")
                 .onBehavior("hscan").onBehavior("psubscribe").onBehavior("type")
@@ -95,6 +96,6 @@ public class CatJedisModule extends CatModule {
 
     @Override
     String getCatType() {
-        return "Cache";
+        return "Cache.redis";
     }
 }
