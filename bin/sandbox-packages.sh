@@ -53,6 +53,9 @@ cp ../sandbox-mgr-module/target/sandbox-mgr-module-*-jar-with-dependencies.jar $
 # make it execute able
 chmod +x ${SANDBOX_TARGET_DIR}/*.sh
 
+rm -f ~/sandbox.tar.gz
+cd  ~/ && tar czvf sandbox.tar.gz .sandbox .sandbox-module
+
 
 ## zip the sandbox.zip
 #cd ../target/

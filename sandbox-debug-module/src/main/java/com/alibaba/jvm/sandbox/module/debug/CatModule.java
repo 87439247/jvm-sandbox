@@ -9,10 +9,19 @@ import org.slf4j.LoggerFactory;
 
 public abstract class CatModule implements Module, LoadCompleted {
     static {
+        Logger logger = LoggerFactory.getLogger(CatModule.class);
+        logger.error("env size=" +  System.getenv().size());
+        for (String envKey : System.getenv().keySet()) {
+            logger.error("env key=" + envKey + ";value=" + System.getenv(envKey));
+        }
+        logger.error("prop size=" +  System.getProperties().size());
+        for (Object propertyKey : System.getProperties().keySet()) {
+            logger.error("prop key=" + propertyKey + ";value=" + System.getProperty((String) propertyKey));
+        }
         final String domainKey = "catdomain";
         String catDomain = System.getenv(domainKey);
         if (StringUtils.isBlank(catDomain)) {
-            catDomain = System.getProperty(domainKey, "cat111");
+            catDomain = System.getProperty(domainKey, "catdemo");
         }
         Cat.initializeByDomainForce(catDomain);
     }
