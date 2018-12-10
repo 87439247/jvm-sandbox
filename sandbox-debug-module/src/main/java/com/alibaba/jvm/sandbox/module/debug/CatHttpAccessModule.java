@@ -8,20 +8,16 @@ import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
 import com.dianping.cat.CatConstants;
-import com.dianping.cat.configuration.client.entity.Server;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
-import com.dianping.cat.message.internal.DefaultMessageManager;
 import com.dianping.cat.message.internal.DefaultTransaction;
 import com.dianping.cat.status.http.HttpStats;
-import com.dianping.cat.util.Joiners;
 import com.dianping.cat.util.UrlParser;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
@@ -71,7 +67,7 @@ public class CatHttpAccessModule extends CatModule {
 
 
     /*
-     * 拦截HttpServlet的服务请求入口
+     * 拦截HttpServlet的服务请求入口  com.alibaba.dubbo.remoting.http.servlet.DispatcherServlet org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher class org.apache.catalina.servlets.DefaultServlet
      */
     private void buildingHttpServletService() {
         new EventWatchBuilder(moduleEventWatcher)
@@ -84,11 +80,6 @@ public class CatHttpAccessModule extends CatModule {
                         "javax.servlet.http.HttpServletResponse"
                 )
                 .onWatch(new AdviceListener() {
-
-                    final String MARK_HTTP_BEGIN = "MARK_HTTP_BEGIN";
-
-                    private String servers;
-
 
                     /**
                      * 排除的uri
@@ -110,29 +101,6 @@ public class CatHttpAccessModule extends CatModule {
                             return exclude;
                         } catch (Exception e) {
                             return false;
-                        }
-                    }
-
-                    private String getCatServer() {
-                        try {
-                            if (servers == null) {
-                                DefaultMessageManager manager = (DefaultMessageManager) Cat.getManager();
-                                List<Server> servers = manager.getConfigService().getServers();
-
-                                this.servers = Joiners.by(',').join(servers, new Joiners.IBuilder<Server>() {
-                                    @Override
-                                    public String asString(Server server) {
-                                        String ip = server.getIp();
-                                        int httpPort = server.getHttpPort();
-
-                                        return ip + ":" + httpPort;
-                                    }
-                                });
-                            }
-
-                            return servers;
-                        } catch (Exception e) {
-                            return null;
                         }
                     }
 
@@ -169,7 +137,6 @@ public class CatHttpAccessModule extends CatModule {
                         if (isTraceMode) {
                             String id = Cat.getCurrentMessageId();
                             invokeMethod(res, "setHeader", "X-CAT-ROOT-ID", id);
-                            invokeMethod(res, "setHeader", "X-CAT-SERVER", getCatServer());
                         }
                     }
 
@@ -240,10 +207,8 @@ public class CatHttpAccessModule extends CatModule {
                         if (excludeURI(uri))
                             return;
 
-                        Message message = Cat.getManager().getThreadLocalMessageTree().getMessage();
-                        boolean top = message == null;
+                        boolean top = Cat.getManager().getThreadLocalMessageTree().getMessage() == null;
                         String type;
-
 
                         if (top) {
                             type = getCatType();
@@ -263,7 +228,6 @@ public class CatHttpAccessModule extends CatModule {
                         ha.transaction = t;
                         ha.beginTimestamp = System.currentTimeMillis();
 
-                        advice.mark(MARK_HTTP_BEGIN);
                         advice.attach(ha);
                     }
 
