@@ -9,7 +9,7 @@ public class UrlUtils {
     private static ConcurrentSet<Character> numbers = new ConcurrentSet<>();
 
     static {
-        String word = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/?&=_";
+        String word = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/.?&=_";
         String number = "0123456789";
         for (char w : word.toCharArray()) {
             words.add(w);
@@ -30,7 +30,7 @@ public class UrlUtils {
         }
         StringBuilder builder = new StringBuilder();
         boolean preIsNum = false;
-        final String num = "(NUM)";
+        final String num = "(N)";
         for (char c : uri.toCharArray()) {
 
             if (words.contains(c)) {
