@@ -81,12 +81,10 @@ public class CatJedisModule extends CatModule {
                         StringBuilder catName = new StringBuilder();
                         catName.append(advice.getBehavior().getName());
                         String key = "";
-                        if (advice.getParameterArray() != null && advice.getParameterArray().length >= 1) {
-                            Object param0 = advice.getParameterArray()[0];
-                            if (param0 instanceof String) {
-                                key = (String) advice.getParameterArray()[0];
-                                key = rebuildRedisKey(key);
-                            }
+                        Object param0 = advice.getParameterArray()[0];
+                        if (param0 instanceof String) {
+                            key = (String) advice.getParameterArray()[0];
+                            key = rebuildRedisKey(key);
                         }
                         Transaction t = Cat.newTransaction(getCatType(), catName.append("(").append(key).append(")").toString());
                         advice.attach(t);
@@ -113,12 +111,10 @@ public class CatJedisModule extends CatModule {
                         StringBuilder catName = new StringBuilder();
                         catName.append(advice.getBehavior().getName());
                         String key = "";
-                        if (advice.getParameterArray() != null && advice.getParameterArray().length >= 1) {
-                            Object param0 = advice.getParameterArray()[0];
-                            if (param0 instanceof byte[]) {
-                                key = new String((byte[]) advice.getParameterArray()[0], "UTF-8");
-                                key = rebuildRedisKey(key);
-                            }
+                        Object param0 = advice.getParameterArray()[0];
+                        if (param0 instanceof byte[]) {
+                            key = new String((byte[]) advice.getParameterArray()[0], "UTF-8");
+                            key = rebuildRedisKey(key);
                         }
                         Transaction t = Cat.newTransaction(getCatType(), catName.append("(").append(key).append(")").toString());
                         advice.attach(t);
