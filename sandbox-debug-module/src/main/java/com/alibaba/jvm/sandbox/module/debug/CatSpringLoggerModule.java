@@ -1,7 +1,6 @@
 package com.alibaba.jvm.sandbox.module.debug;
 
 import com.alibaba.jvm.sandbox.api.Information;
-import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
@@ -10,10 +9,10 @@ import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
+
+import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 
 /**
  * Spring容器的调试日志
@@ -56,7 +55,7 @@ public class CatSpringLoggerModule extends CatModule {
         @Override
         public void before(Advice advice) {
             String methodName = advice.getBehavior().getName();
-            if (advice.getBehavior().getName().equals("<init>")) {
+            if ("<init>".equals(methodName)) {
                 methodName = "constructor";
             }
             Transaction t = Cat.newTransaction(getCatType(), advice.getTarget().getClass().getName() + "." + methodName);
@@ -65,31 +64,12 @@ public class CatSpringLoggerModule extends CatModule {
 
         @Override
         public void afterReturning(Advice advice) {
-            logSpringRestController(advice);
+            finish(advice);
         }
 
         @Override
         public void afterThrowing(Advice advice) {
-            logSpringRestController(advice);
-        }
-
-        private void logSpringRestController(Advice advice) {
-            Transaction t = advice.attachment();
-            try {
-                if (advice.isThrows()) {
-                    t.setStatus(advice.getThrowable());
-                    Cat.logError(advice.getThrowable());
-                }
-                if (advice.isReturn()) {
-                    t.setSuccessStatus();
-                }
-                t.complete();
-            } catch (Throwable e) {
-                t.setStatus(e);
-                Cat.logError(e);
-            } finally {
-                t.complete();
-            }
+            finish(advice);
         }
 
     };

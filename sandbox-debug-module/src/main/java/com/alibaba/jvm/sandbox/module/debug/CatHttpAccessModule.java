@@ -84,6 +84,14 @@ public class CatHttpAccessModule extends CatModule {
                         "javax.servlet.http.HttpServletRequest",
                         "javax.servlet.http.HttpServletResponse"
                 )
+
+
+                .onClass("org.springframework.web.servlet.HttpServletBean").includeSubClasses()
+                .onBehavior("service")
+                .withParameterTypes(
+                        "javax.servlet.http.HttpServletRequest",
+                        "javax.servlet.http.HttpServletResponse"
+                )
                 .onWatch(new AdviceListener() {
 
                     /**
