@@ -65,15 +65,20 @@ public class CatHttpAccessModule extends CatModule {
         buildingHttpServletService();
     }
 
-
     /*
      * 拦截HttpServlet的服务请求入口  com.alibaba.dubbo.remoting.http.servlet.DispatcherServlet org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher class org.apache.catalina.servlets.DefaultServlet
      */
     private void buildingHttpServletService() {
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("javax.servlet.http.HttpServlet")
-                .includeSubClasses()
-                .includeBootstrap()
+                .onClass("com.alibaba.dubbo.remoting.http.servlet.DispatcherServlet")
+                .onBehavior("service")
+                .withParameterTypes(
+                        "javax.servlet.http.HttpServletRequest",
+                        "javax.servlet.http.HttpServletResponse"
+                )
+
+
+                .onClass("org.springframework.web.context.support.HttpRequestHandlerServlet")
                 .onBehavior("service")
                 .withParameterTypes(
                         "javax.servlet.http.HttpServletRequest",
