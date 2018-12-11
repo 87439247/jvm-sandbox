@@ -11,6 +11,8 @@ import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 
@@ -26,14 +28,9 @@ public class CatJedisModule extends CatModule {
         monitorJedisMethod();
     }
 
-    /**
-     * 新老jedis版本JedisCommand命名空间不同
-     */
-    private void monitorJedisMethod() {
 
-        new EventWatchBuilder(moduleEventWatcher)
-                .onClass("redis.clients.**.JedisCommands").includeSubClasses()
-                .onBehavior("zcount").onBehavior("sunionstore").onBehavior("zunionstore")
+    private EventWatchBuilder.IBuildingForBehavior watch(EventWatchBuilder.IBuildingForClass buildingForClass) {
+        return buildingForClass.onBehavior("zcount").onBehavior("sunionstore").onBehavior("zunionstore")
                 .onBehavior("del").onBehavior("zinterstore").onBehavior("echo")
                 .onBehavior("hscan").onBehavior("psubscribe").onBehavior("type")
                 .onBehavior("sinterstore").onBehavior("setex").onBehavior("zlexcount")
@@ -66,18 +63,32 @@ public class CatJedisModule extends CatModule {
                 .onBehavior("geopos").onBehavior("mset").onBehavior("zrangeByScoreWithScores").onBehavior("zscore")
                 .onBehavior("pexpireAt").onBehavior("georadiusByMember").onBehavior("ttl").onBehavior("lrange")
                 .onBehavior("smembers").onBehavior("pfmerge").onBehavior("rpush").onBehavior("publish")
-                .onBehavior("mget").onBehavior("sscan").onBehavior("append").onBehavior("sismember")
+                .onBehavior("mget").onBehavior("sscan").onBehavior("append").onBehavior("sismember");
+    }
+
+    /**
+     * 新老jedis版本JedisCommand命名空间不同
+     */
+    private void monitorJedisMethod() {
+
+        watch(new EventWatchBuilder(moduleEventWatcher)
+                .onClass("redis.clients.**.JedisCommands").includeSubClasses())
                 .withParameterTypes(String.class)
                 .onWatch(new AdviceListener() {
 
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        String methodName = advice.getBehavior().getName();
+                        StringBuilder catName = new StringBuilder();
+                        catName.append(advice.getBehavior().getName());
                         String key = "";
                         if (advice.getParameterArray() != null && advice.getParameterArray().length >= 1) {
-                            key = (String) advice.getParameterArray()[0];
+                            Object param0 = advice.getParameterArray()[0];
+                            if (param0 instanceof String) {
+                                key = (String) advice.getParameterArray()[0];
+                                key = rebuildRedisKey(key);
+                            }
                         }
-                        Transaction t = Cat.newTransaction(getCatType(), methodName + "(" + key + ")");
+                        Transaction t = Cat.newTransaction(getCatType(), catName.append("(").append(key).append(")").toString());
                         advice.attach(t);
                     }
 
@@ -91,6 +102,46 @@ public class CatJedisModule extends CatModule {
                         finish(advice);
                     }
                 });
+
+        watch(new EventWatchBuilder(moduleEventWatcher)
+                .onClass("redis.clients.**.BinaryJedisCommands").includeSubClasses())
+                .withParameterTypes(byte[].class)
+                .onWatch(new AdviceListener() {
+
+                    @Override
+                    public void before(Advice advice) throws Throwable {
+                        StringBuilder catName = new StringBuilder();
+                        catName.append(advice.getBehavior().getName());
+                        String key = "";
+                        if (advice.getParameterArray() != null && advice.getParameterArray().length >= 1) {
+                            Object param0 = advice.getParameterArray()[0];
+                            if (param0 instanceof byte[]) {
+                                key = new String((byte[]) advice.getParameterArray()[0], "UTF-8");
+                                key = rebuildRedisKey(key);
+                            }
+                        }
+                        Transaction t = Cat.newTransaction(getCatType(), catName.append("(").append(key).append(")").toString());
+                        advice.attach(t);
+                    }
+
+                    @Override
+                    public void afterReturning(Advice advice) {
+                        finish(advice);
+                    }
+
+                    @Override
+                    public void afterThrowing(Advice advice) {
+                        finish(advice);
+                    }
+                });
+    }
+
+
+    private final Pattern pattern = Pattern.compile("[^:]*?\\d+[^:]*");
+
+    private String rebuildRedisKey(String key) {
+        Matcher matcher = pattern.matcher(key);
+        return matcher.replaceAll("ID");
     }
 
 
