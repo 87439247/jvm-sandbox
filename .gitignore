@@ -1,6 +1,6 @@
 ## for IDEA
 .idea
 *.iml
-
+target
 ## for maven
 pom.xml.versionsBackup
