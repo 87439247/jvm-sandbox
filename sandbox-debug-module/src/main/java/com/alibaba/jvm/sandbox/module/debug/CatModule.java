@@ -15,18 +15,18 @@ public abstract class CatModule implements Module, LoadCompleted {
     static Logger internalLogger = LoggerFactory.getLogger(CatModule.class);
 
     static {
-        StringBuilder envBuider = new StringBuilder();
-        envBuider.append("\nenv size=").append(System.getenv().size());
+        StringBuilder envBuilder = new StringBuilder();
+        envBuilder.append("\nenv size=").append(System.getenv().size());
         for (String envKey : System.getenv().keySet()) {
-            envBuider.append("\nenv key=").append(envKey).append(";value=").append(System.getenv(envKey));
+            envBuilder.append("\nenv key=").append(envKey).append(";value=").append(System.getenv(envKey));
         }
-        envBuider.append("\nprop size=").append(System.getProperties().size());
+        envBuilder.append("\nprop size=").append(System.getProperties().size());
         for (Object propertyKey : System.getProperties().keySet()) {
-            envBuider.append("\nprop key=").append(propertyKey).append(";value=").append(System.getProperty((String) propertyKey));
+            envBuilder.append("\nprop key=").append(propertyKey).append(";value=").append(System.getProperty((String) propertyKey));
         }
-        envBuider.append("\nIP=").append(IpUtils.getIp());
-        envBuider.append("\nHOSTNAME=").append(IpUtils.getHostName());
-        internalLogger.error(envBuider.toString());
+        envBuilder.append("\nIP=").append(IpUtils.getIp());
+        envBuilder.append("\nHOSTNAME=").append(IpUtils.getHostName());
+        internalLogger.error(envBuilder.toString());
         final String domainKey = "catdomain";
         CAT_DOMAIN = getConfigFromEnv(domainKey, "catdemo");
         Cat.initializeByDomainForce(CAT_DOMAIN);
