@@ -7,10 +7,12 @@ import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 
+import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 
@@ -49,16 +51,22 @@ public class CatLog4jV1Module extends CatLogModule {
                     @Override
                     public void afterReturning(Advice advice) {
                         try {
-                            final int errorLevel = 40000;
+                            int errorLevel = 40000;
                             Object event = advice.getParameterArray()[0];
                             int level = invokeMethod(invokeMethod(event, "getLevel"), "toInt");
-                            if (level >= errorLevel) {
+                            long timeStamp = invokeField(event, "timeStamp");
+                            String msg = invokeMethod(event, "getRenderedMessage");
+                            String loggerName = invokeMethod(event, "getLoggerName");
+                            String threadName = invokeMethod(event, "getThreadName");
+                            if (level < errorLevel) {
+                                offer(timeStamp, msg, level, loggerName, threadName, null);
+                            } else {
                                 Throwable throwable = null;
                                 Object throwProxy = invokeMethod(event, "getThrowableInformation");
                                 if (throwProxy != null) {
                                     throwable = invokeMethod(throwProxy, "getThrowable");
                                 }
-                                String msg = invokeMethod(event, "getRenderedMessage");
+                                offer(timeStamp, msg, level, loggerName, threadName, throwable);
                                 Cat.logError("[ERROR] " + msg, throwable);
                             }
                         } catch (Exception ex) {

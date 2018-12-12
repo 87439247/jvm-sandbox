@@ -16,6 +16,7 @@ import org.kohsuke.MetaInfServices;
 import javax.annotation.Resource;
 import java.util.HashMap;
 
+import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 /**
@@ -70,7 +71,7 @@ public class CatMybatisLoggerModule extends CatModule {
                                 if (advice.getThrowable() != null) {
                                     t.setStatus(advice.getThrowable());
                                     Object param = advice.getParameterArray()[1];
-                                    HashMap map = (HashMap) FieldUtils.getField(advice.getTarget().getClass(), "statementMap", true).get(advice.getTarget());
+                                    HashMap map = invokeField(advice.getTarget(), "statementMap");
                                     Cat.logEvent(getCatType(), "SQL", "500", BeanTraces.printBeanTraceAscii(map.keySet().toArray()).toString());
                                     Cat.logEvent(getCatType(), "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
                                     Cat.logError(advice.getThrowable());

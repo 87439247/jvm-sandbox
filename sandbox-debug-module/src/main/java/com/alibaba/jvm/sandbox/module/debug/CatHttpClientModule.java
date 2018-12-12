@@ -9,12 +9,9 @@ import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
-import io.netty.util.internal.ConcurrentSet;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
-
-import java.util.concurrent.ConcurrentMap;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
