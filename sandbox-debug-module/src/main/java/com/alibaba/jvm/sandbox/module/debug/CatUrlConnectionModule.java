@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.URL;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
+import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
@@ -71,7 +72,7 @@ public class CatUrlConnectionModule extends CatModule {
                     @Override
                     public void before(Advice advice) throws Throwable {
                         Object urlConnection = advice.getParameterArray()[2];
-                        URL url = (URL) FieldUtils.getField(urlConnection.getClass(), "url", true).get(urlConnection);
+                        URL url = invokeField(urlConnection, "url");
                         Transaction transaction = Cat.newTransaction(getCatType() + "-" + url.getHost(), rebuildPath(url.getPath()));
                         advice.attach(transaction);
                     }
