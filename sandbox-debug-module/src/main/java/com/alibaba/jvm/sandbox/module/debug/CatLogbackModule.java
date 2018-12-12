@@ -1,7 +1,6 @@
 package com.alibaba.jvm.sandbox.module.debug;
 
 import com.alibaba.jvm.sandbox.api.Information;
-import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
@@ -9,8 +8,6 @@ import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
 import org.kohsuke.MetaInfServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 
@@ -24,7 +21,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-logback", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatLogbackModule extends CatModule {
+public class CatLogbackModule extends CatLogModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;
@@ -34,9 +31,12 @@ public class CatLogbackModule extends CatModule {
         buildingLogbackLogger();
     }
 
-
     /*
-     * 拦截HttpServlet的服务请求入口
+     * 拦截ch.qos.logback.classic.Logger.callAppenders
+     * public static final int ERROR_INT = 40000;
+     * public static final int WARN_INT = 30000;
+     * public static final int INFO_INT = 20000;
+     * public static final int DEBUG_INT = 10000;
      */
     private void buildingLogbackLogger() {
         new EventWatchBuilder(moduleEventWatcher)
@@ -51,16 +51,22 @@ public class CatLogbackModule extends CatModule {
                     @Override
                     public void afterReturning(Advice advice) {
                         try {
-                            final int errorLevel = 40000;
+                            int errorLevel = 40000;
                             Object event = advice.getParameterArray()[0];
                             int level = invokeMethod(invokeMethod(event, "getLevel"), "toInt");
-                            if (level >= errorLevel) {
+                            long timeStamp = invokeMethod(event, "getTimeStamp");
+                            String msg = invokeMethod(event, "getFormattedMessage");
+                            String loggerName = invokeMethod(event, "getLoggerName");
+                            String threadName = invokeMethod(event, "getThreadName");
+                            if (level < errorLevel) {
+                                offer(timeStamp, msg, level, loggerName, threadName, null);
+                            } else {
                                 Throwable throwable = null;
                                 Object throwProxy = invokeMethod(event, "getThrowableProxy");
                                 if (throwProxy != null) {
                                     throwable = invokeMethod(throwProxy, "getThrowable");
                                 }
-                                String msg = invokeMethod(event, "getFormattedMessage");
+                                offer(timeStamp, msg, level, loggerName, threadName, throwable);
                                 Cat.logError("[ERROR] " + msg, throwable);
                             }
                         } catch (Exception ex) {
@@ -70,10 +76,11 @@ public class CatLogbackModule extends CatModule {
 
                     @Override
                     public void afterThrowing(Advice advice) {
-                        // no
+                        // do nothing
                     }
                 });
     }
+
 
     @Override
     String getCatType() {

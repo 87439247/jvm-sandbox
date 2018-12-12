@@ -8,25 +8,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class CatModule implements Module, LoadCompleted {
+
+    public static final String CAT_DOMAIN;
+
+    static Logger internalLogger = LoggerFactory.getLogger(CatModule.class);
+
     static {
-        Logger logger = LoggerFactory.getLogger(CatModule.class);
-        logger.error("env size=" +  System.getenv().size());
+        internalLogger.error("env size=" + System.getenv().size());
         for (String envKey : System.getenv().keySet()) {
-            logger.error("env key=" + envKey + ";value=" + System.getenv(envKey));
+            internalLogger.error("env key=" + envKey + ";value=" + System.getenv(envKey));
         }
-        logger.error("prop size=" +  System.getProperties().size());
+        internalLogger.error("prop size=" + System.getProperties().size());
         for (Object propertyKey : System.getProperties().keySet()) {
-            logger.error("prop key=" + propertyKey + ";value=" + System.getProperty((String) propertyKey));
+            internalLogger.error("prop key=" + propertyKey + ";value=" + System.getProperty((String) propertyKey));
         }
         final String domainKey = "catdomain";
-        String catDomain = System.getenv(domainKey);
-        if (StringUtils.isBlank(catDomain)) {
-            catDomain = System.getProperty(domainKey, "catdemo");
-        }
-        Cat.initializeByDomainForce(catDomain);
+        CAT_DOMAIN = getConfigFromEnv(domainKey, "catdemo");
+        Cat.initializeByDomainForce(CAT_DOMAIN);
     }
 
     protected Logger stLogger = LoggerFactory.getLogger(this.getClass());
+
+
+    public static String getConfigFromEnv(String key, String def) {
+        String value = System.getenv(key);
+        if (StringUtils.isBlank(value)) {
+            value = System.getProperty(key, def);
+        }
+        return value;
+    }
 
     abstract String getCatType();
 }

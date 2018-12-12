@@ -16,8 +16,8 @@ import javax.annotation.Resource;
 /**
  * Spring容器的调试日志
  */
-@MetaInfServices(Module.class)
-@Information(id = "debug-spring-logger", version = "0.0.1", author = "luanjia@taobao.com")
+//@MetaInfServices(Module.class)
+//@Information(id = "debug-spring-logger", version = "0.0.1", author = "luanjia@taobao.com")
 public class SpringLoggerModule implements Module, LoadCompleted {
 
     private final Logger spLogger = LoggerFactory.getLogger("DEBUG-SPRING-LOGGER");

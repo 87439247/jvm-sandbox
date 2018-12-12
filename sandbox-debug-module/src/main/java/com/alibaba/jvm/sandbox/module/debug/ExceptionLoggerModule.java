@@ -18,8 +18,8 @@ import javax.annotation.Resource;
  *
  * @author luanjia@taobao.com
  */
-@MetaInfServices(Module.class)
-@Information(id = "debug-exception-logger", version = "0.0.1", author = "luanjia@taobao.com")
+//@MetaInfServices(Module.class)
+//@Information(id = "debug-exception-logger", version = "0.0.1", author = "luanjia@taobao.com")
 public class ExceptionLoggerModule implements Module, LoadCompleted {
 
     private final Logger exLogger = LoggerFactory.getLogger("DEBUG-EXCEPTION-LOGGER");
@@ -36,10 +36,10 @@ public class ExceptionLoggerModule implements Module, LoadCompleted {
 
                     @Override
                     public void afterReturning(Advice advice) {
-//                        exLogger.info("occur an exception: {}",
-//                                advice.getTarget().getClass().getName(),
-//                                advice.getTarget()
-//                        );
+                        exLogger.info("occur an exception: {}",
+                                advice.getTarget().getClass().getName(),
+                                advice.getTarget()
+                        );
                     }
 
                 });

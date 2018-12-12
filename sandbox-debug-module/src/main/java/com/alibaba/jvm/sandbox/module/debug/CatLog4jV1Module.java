@@ -21,7 +21,7 @@ import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-log4j-v1", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class Catlog4jV1Module extends CatModule {
+public class CatLog4jV1Module extends CatLogModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;

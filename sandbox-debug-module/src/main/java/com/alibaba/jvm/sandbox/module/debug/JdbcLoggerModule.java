@@ -24,8 +24,8 @@ import static com.alibaba.jvm.sandbox.module.debug.JdbcLoggerModule.MonitorJavaS
  *
  * @author luanjia@taobao.com
  */
-@MetaInfServices(Module.class)
-@Information(id = "debug-jdbc-logger", version = "0.0.1", author = "luanjia@taobao.com")
+//@MetaInfServices(Module.class)
+//@Information(id = "debug-jdbc-logger", version = "0.0.1", author = "luanjia@taobao.com")
 public class JdbcLoggerModule implements Module, LoadCompleted {
 
     private final Logger smLogger = LoggerFactory.getLogger("DEBUG-JDBC-LOGGER");
