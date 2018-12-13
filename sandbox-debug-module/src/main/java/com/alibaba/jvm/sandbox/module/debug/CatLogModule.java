@@ -103,6 +103,15 @@ public abstract class CatLogModule extends CatModule {
         logMessage.setTimestamp(new Date(timestamp));
         logMessage.setMessage(message);
         logMessage.setLevelValue(levelValue);
+        if (levelValue <= 10000) {
+            logMessage.setLevel("DEBUG");
+        } else if (levelValue <= 20000) {
+            logMessage.setLevel("INFO");
+        } else if (levelValue <= 30000) {
+            logMessage.setLevel("WARN");
+        } else {
+            logMessage.setLevel("ERROR");
+        }
         logMessage.setLoggerName(loggerName);
         logMessage.setThreadName(threadName);
         logMessage.setThrowable(throwable);
