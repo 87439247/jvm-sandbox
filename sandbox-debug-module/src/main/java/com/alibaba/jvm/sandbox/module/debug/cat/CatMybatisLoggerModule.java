@@ -1,4 +1,4 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
@@ -10,7 +10,6 @@ import com.alibaba.jvm.sandbox.module.debug.util.beantrace.BeanTraces;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;

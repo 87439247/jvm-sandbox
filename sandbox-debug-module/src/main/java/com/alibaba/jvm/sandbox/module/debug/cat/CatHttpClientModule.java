@@ -1,4 +1,4 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;

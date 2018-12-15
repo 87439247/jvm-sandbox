@@ -1,4 +1,4 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.annotation.JSONField;

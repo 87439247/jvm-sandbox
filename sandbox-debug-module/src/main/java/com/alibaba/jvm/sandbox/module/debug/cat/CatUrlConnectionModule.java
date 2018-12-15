@@ -1,4 +1,4 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
@@ -7,20 +7,15 @@ import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
-import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
-import io.netty.util.internal.ConcurrentSet;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 
-import java.net.URI;
 import java.net.URL;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
-import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
 @MetaInfServices(Module.class)

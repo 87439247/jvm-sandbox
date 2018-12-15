@@ -1,4 +1,4 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
@@ -7,7 +7,6 @@ import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;

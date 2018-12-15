@@ -1,4 +1,4 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
@@ -11,7 +11,6 @@ import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 
-import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 

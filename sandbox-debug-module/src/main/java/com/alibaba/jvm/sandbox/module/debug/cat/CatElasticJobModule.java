@@ -1,7 +1,6 @@
-package com.alibaba.jvm.sandbox.module.debug;
+package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
-import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
@@ -12,8 +11,6 @@ import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 
