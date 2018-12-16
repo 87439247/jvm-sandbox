@@ -12,6 +12,8 @@ import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 
+import java.util.Map;
+
 import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
@@ -49,10 +51,16 @@ public class CatHttpClient3Module extends CatModule {
                         String path = invokeMethod(uri,"getPath");
                         Transaction transaction = Cat.newTransaction(getCatType() + "-" + host, rebuildPath(path));
                         advice.attach(transaction);
+                        CatContext context = new CatContext();
+                        Cat.logRemoteCallClient(context, CatModule.CAT_DOMAIN);
+                        for (Map.Entry<String, String> entry : context.properties.entrySet()) {
+                            invokeMethod(httpMethod, "setHeader", entry.getKey(), entry.getValue());
+                        }
                     }
 
                     @Override
                     public void afterReturning(Advice advice) {
+
                         finish(advice);
                     }
 

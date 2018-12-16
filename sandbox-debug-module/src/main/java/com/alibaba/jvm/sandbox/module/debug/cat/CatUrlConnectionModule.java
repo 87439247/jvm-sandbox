@@ -9,13 +9,17 @@ import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
+import sun.net.www.MessageHeader;
+import sun.net.www.protocol.http.HttpURLConnection;
 
 import javax.annotation.Resource;
 
 import java.net.URL;
+import java.util.Map;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
+import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
 @MetaInfServices(Module.class)
@@ -66,10 +70,16 @@ public class CatUrlConnectionModule extends CatModule {
 
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        Object urlConnection = advice.getParameterArray()[2];
-                        URL url = invokeField(urlConnection, "url");
+                        HttpURLConnection urlConnection = (HttpURLConnection) advice.getParameterArray()[2];
+                        URL url = urlConnection.getURL();
                         Transaction transaction = Cat.newTransaction(getCatType() + "-" + url.getHost(), rebuildPath(url.getPath()));
                         advice.attach(transaction);
+                        MessageHeader headerMessage = (MessageHeader) advice.getParameterArray()[0];
+                        CatContext context = new CatContext();
+                        Cat.logRemoteCallClient(context, CatModule.CAT_DOMAIN);
+                        for (Map.Entry<String, String> entry : context.properties.entrySet()) {
+                            headerMessage.add(entry.getKey(), entry.getValue());
+                        }
                     }
 
                     @Override

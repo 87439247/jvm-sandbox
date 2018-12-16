@@ -13,6 +13,8 @@ import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 
+import java.util.Map;
+
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
@@ -47,10 +49,16 @@ public class CatHttpClientModule extends CatModule {
                     @Override
                     public void before(Advice advice) throws Throwable {
                         String hostName = invokeMethod(advice.getParameterArray()[0], "getHostName");
-                        String uri = invokeMethod(invokeMethod(advice.getParameterArray()[1], "getRequestLine"), "getUri");
+                        Object httpRequest = advice.getParameterArray()[1];
+                        String uri = invokeMethod(invokeMethod(httpRequest, "getRequestLine"), "getUri");
                         uri = rebuildPath(uri);
                         Transaction transaction = Cat.newTransaction(getCatType() + "-" + hostName, uri);
                         advice.attach(transaction);
+                        CatContext context = new CatContext();
+                        Cat.logRemoteCallClient(context, CatModule.CAT_DOMAIN);
+                        for (Map.Entry<String, String> entry : context.properties.entrySet()) {
+                            invokeMethod(httpRequest, "setHeader", entry.getKey(), entry.getValue());
+                        }
                     }
 
                     @Override

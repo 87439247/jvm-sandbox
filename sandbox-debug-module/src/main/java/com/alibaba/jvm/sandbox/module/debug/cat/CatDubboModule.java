@@ -12,10 +12,13 @@ import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.commons.lang3.ClassUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
+
+import java.util.Map;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
@@ -56,8 +59,7 @@ public class CatDubboModule extends CatModule {
                 .onWatch(new AdviceListener() {
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        final Class rpcContextClass = ClassUtils.getClass("com.alibaba.dubbo.rpc.RpcContext");
-                        CatDubboModule.this.before(advice, rpcContextClass);
+                        CatDubboModule.this.before(advice);
                     }
 
                     @Override
@@ -83,8 +85,7 @@ public class CatDubboModule extends CatModule {
                 .onWatch(new AdviceListener() {
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        final Class rpcContextClass = ClassUtils.getClass("org.apache.dubbo.rpc.RpcContext");
-                        CatDubboModule.this.before(advice, rpcContextClass);
+                        CatDubboModule.this.before(advice);
                     }
 
                     @Override
@@ -100,17 +101,28 @@ public class CatDubboModule extends CatModule {
     }
 
 
-    private void before(Advice advice, Class rpcContextClass) throws Exception {
+    private void before(Advice advice) throws Exception {
         Object invoker = advice.getParameterArray()[0];
         Object invocation = advice.getParameterArray()[1];
-        Object rpcContext = MethodUtils.invokeStaticMethod(rpcContextClass, "getContext");
-        boolean isConsumer = invokeMethod(rpcContext, "isConsumerSide");
         Object requestURL = invokeMethod(invoker, "getUrl");
 
         String host = invokeMethod(requestURL, "getHost");
         String path = invokeMethod(requestURL, "getPath");
         String methodName = invokeMethod(invocation, "getMethodName");
-        Transaction transaction = Cat.newTransaction(getCatType() + (isConsumer ? "-c-" : "-p-") + host, path + "." + methodName);
+        Transaction transaction;
+        Map<String, String> attachments = invokeMethod(invocation, "getAttachments");
+        String catParentMessageId = attachments.get(Cat.Context.PARENT);
+        if (StringUtils.isBlank(catParentMessageId)) {
+            transaction = Cat.newTransaction(getCatType() + "-c-" + host, path + "." + methodName);
+            CatContext context = new CatContext();
+            Cat.logRemoteCallClient(context, CatModule.CAT_DOMAIN);
+            attachments.putAll(context.properties);
+        } else {
+            transaction = Cat.newTransaction(getCatType() + "-p-" + host, path + "." + methodName);
+            CatContext context = new CatContext();
+            context.properties.putAll(attachments);
+            Cat.logRemoteCallServer(context);
+        }
         advice.attach(new Event(requestURL, host, transaction));
     }
 

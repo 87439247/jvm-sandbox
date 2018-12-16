@@ -17,6 +17,7 @@ import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -234,7 +235,14 @@ public class CatHttpAccessModule extends CatModule {
                         ha.status = 0;
 
                         Transaction t = Cat.newTransaction(type, UrlParser.format(uri));
-
+                        Enumeration<String> headerNames = invokeMethod(req, "getHeaderNames");
+                        CatContext context = new CatContext();
+                        while (headerNames.hasMoreElements()) {
+                            String key = headerNames.nextElement();
+                            String value = invokeMethod(req, "getHeader", key);
+                            context.addProperty(key, value);
+                        }
+                        Cat.logRemoteCallServer(context);
                         logPayload(req, top, type);
                         logCatMessageId(response);
 

@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class CatContext implements Cat.Context {
 
-    private Map<String, String> properties = new HashMap<String, String>();
+    public Map<String, String> properties = new HashMap<String, String>();
 
     @Override
     public void addProperty(String key, String value) {
@@ -18,4 +18,6 @@ public class CatContext implements Cat.Context {
     public String getProperty(String key) {
         return properties.get(key);
     }
+
+
 }
