@@ -145,16 +145,6 @@ public class CatHttpAccessModule extends CatModule {
                         }
                     }
 
-                    private void logCatMessageId(Object res) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        boolean isTraceMode = Cat.getManager().isTraceMode();
-
-                        if (isTraceMode) {
-                            String id = Cat.getCurrentMessageId();
-                            invokeMethod(res, "setHeader", "X-CAT-ROOT-ID", id);
-                        }
-                    }
-
-
                     private void logPayload(Object req, boolean top, String type) {
                         try {
                             if (top) {
@@ -203,38 +193,20 @@ public class CatHttpAccessModule extends CatModule {
                         Cat.logEvent(type, type + ".Method", Message.SUCCESS, sb.toString());
                     }
 
-                    private void logTraceMode(Object req) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        String traceMode = "X-CAT-TRACE-MODE";
-                        String headMode = invokeMethod(req, "getHeader", traceMode);
-
-                        if ("true".equals(headMode)) {
-                            Cat.getManager().setTraceMode(true);
-                        }
-                    }
-
 
                     @Override
                     public void before(Advice advice) throws Throwable {
                         final Object req = advice.getParameterArray()[0];
-                        final Object response = advice.getParameterArray()[1];
                         String uri = invokeMethod(req, "getRequestURI");
                         if (excludeURI(uri))
                             return;
 
                         boolean top = Cat.getManager().getThreadLocalMessageTree().getMessage() == null;
-                        String type;
 
-                        if (top) {
-                            type = getCatType();
-                            logTraceMode(req);
-                        } else {
-                            type = CatConstants.TYPE_URL_FORWARD;
-                        }
 
                         HttpAccess ha = new HttpAccess();
                         ha.status = 0;
-
-                        Transaction t = Cat.newTransaction(type, UrlParser.format(uri));
+                        Transaction t = Cat.newTransaction(getCatType(), UrlParser.format(uri));
                         Enumeration<String> headerNames = invokeMethod(req, "getHeaderNames");
                         CatContext context = new CatContext();
                         while (headerNames.hasMoreElements()) {
@@ -243,8 +215,7 @@ public class CatHttpAccessModule extends CatModule {
                             context.addProperty(key, value);
                         }
                         Cat.logRemoteCallServer(context);
-                        logPayload(req, top, type);
-                        logCatMessageId(response);
+                        logPayload(req, top, getCatType());
 
                         ha.transaction = t;
                         ha.beginTimestamp = System.currentTimeMillis();
