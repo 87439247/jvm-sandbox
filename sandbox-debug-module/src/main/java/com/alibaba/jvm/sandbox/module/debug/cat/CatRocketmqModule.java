@@ -105,18 +105,19 @@ public class CatRocketmqModule extends CatModule {
                         try {
                             Class returnClass = advice.getReturnObj().getClass();
                             Object msg = invokeMethod(advice.getParameterArray()[0], "get", 0);
-                            Enum consumeSuccess = Enum.valueOf(returnClass, "CONSUME_SUCCESS");
-                            String msgId = invokeMethod(msg, "getMsgId");
-                            String msgTopic = invokeMethod(msg, "getTopic");
-                            if (!consumeSuccess.equals(advice.getReturnObj())) {
-                                Cat.logError("consume-error(id=" + msgId + ",topic=" + msgTopic + ")", null);
-                            } else {
-                                int size = invokeMethod(advice.getParameterArray()[0], "size");
-                                Cat.logEvent(getCatType() + "-" + msgTopic, "consumed[" + msgId + "]");
-                                Cat.logMetricForCount("rmq-consumer-" + msgTopic, size);
+                            if (msg != null) {
+                                Enum consumeSuccess = Enum.valueOf(returnClass, "CONSUME_SUCCESS");
+                                String msgId = invokeMethod(msg, "getMsgId");
+                                String msgTopic = invokeMethod(msg, "getTopic");
+                                if (!consumeSuccess.equals(advice.getReturnObj())) {
+                                    Cat.logError("consume-error(id=" + msgId + ",topic=" + msgTopic + ")", null);
+                                } else {
+                                    int size = invokeMethod(advice.getParameterArray()[0], "size");
+                                    Cat.logMetricForCount("rmq-consumer-" + msgTopic, size);
+                                }
                             }
                         } catch (Exception e) {
-                            //black hole
+                            stLogger.error("error", e);
                         }
                     }
                 });
