@@ -9,6 +9,7 @@ import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
+import org.apache.commons.lang3.EnumUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
@@ -85,7 +86,12 @@ public class CatRocketmqModule extends CatModule {
 
                     @Override
                     public void before(Advice advice) throws Throwable {
-
+                        Object msg = invokeMethod(advice.getParameterArray()[0], "get", 0);
+                        if (msg != null) {
+                            String msgTopic = invokeMethod(msg, "getTopic");
+                            Transaction transaction = Cat.newTransaction(getCatType() + "-CONSUME", msgTopic);
+                            advice.attach(transaction);
+                        }
                     }
 
                     @Override
@@ -96,31 +102,63 @@ public class CatRocketmqModule extends CatModule {
                     @Override
                     public void afterThrowing(Advice advice) {
                         finish(advice);
-                        if (advice.isThrows()) {
-                            Cat.logError(advice.getThrowable());
-                        }
                     }
 
                     private void finish(Advice advice) {
+                        Transaction transaction = advice.attachment();
+                        if (transaction == null) {
+                            return;
+                        }
                         try {
-                            Class returnClass = advice.getReturnObj().getClass();
+                            Enum consumeSuccess = getSuccess(advice.getReturnObj().getClass());
                             Object msg = invokeMethod(advice.getParameterArray()[0], "get", 0);
                             if (msg != null) {
-                                Enum consumeSuccess = Enum.valueOf(returnClass, "CONSUME_SUCCESS");
                                 String msgId = invokeMethod(msg, "getMsgId");
                                 String msgTopic = invokeMethod(msg, "getTopic");
-                                if (!consumeSuccess.equals(advice.getReturnObj())) {
+                                //记录metric
+                                int size = invokeMethod(advice.getParameterArray()[0], "size");
+                                Cat.logMetricForCount("rmq-consumer-" + msgTopic, size);
+
+                                if (advice.isThrows()) { // when error
+                                    //log error
+                                    Cat.logError("consume-error(id=" + msgId + ",topic=" + msgTopic + ")", advice.getThrowable());
+                                    // set transaction status
+                                    transaction.setStatus(advice.getThrowable());
+                                } else if (consumeSuccess != null && !consumeSuccess.equals(advice.getReturnObj())) { // when consume fail
                                     Cat.logError("consume-error(id=" + msgId + ",topic=" + msgTopic + ")", null);
-                                } else {
-                                    int size = invokeMethod(advice.getParameterArray()[0], "size");
-                                    Cat.logMetricForCount("rmq-consumer-" + msgTopic, size);
+                                    // set transaction status
+                                    transaction.setStatus("500");
+                                } else { // consume success
+                                    // set transaction status
+                                    transaction.setStatus(Message.SUCCESS);
                                 }
                             }
                         } catch (Exception e) {
                             stLogger.error("error", e);
+                            Cat.logError(e);
+                        } finally {
+                            transaction.complete();
                         }
                     }
                 });
+    }
+
+    private Enum success_orderly = null;
+
+    private Enum success_concurrently = null;
+
+    private Enum getSuccess(Class consumeStatusClass) {
+        if (consumeStatusClass.getSimpleName().equals("ConsumeConcurrentlyStatus")) {
+            if (success_concurrently == null) {
+                success_concurrently = EnumUtils.getEnum(consumeStatusClass, "CONSUME_SUCCESS");
+            }
+            return success_concurrently;
+        } else {
+            if (success_orderly == null) {
+                success_orderly = EnumUtils.getEnum(consumeStatusClass, "SUCCESS");
+            }
+        }
+        return null;
     }
 
     @Override
