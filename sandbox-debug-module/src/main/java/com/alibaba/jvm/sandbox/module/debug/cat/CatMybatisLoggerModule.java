@@ -70,8 +70,6 @@ public class CatMybatisLoggerModule extends CatModule {
                                 if (advice.getThrowable() != null) {
                                     t.setStatus(advice.getThrowable());
                                     Object param = advice.getParameterArray()[1];
-                                    HashMap map = invokeField(advice.getTarget(), "statementMap");
-                                    Cat.logEvent(getCatType(), "SQL", "500", BeanTraces.printBeanTraceAscii(map.keySet().toArray()).toString());
                                     Cat.logEvent(getCatType(), "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
                                     Cat.logError(advice.getThrowable());
                                 } else {
