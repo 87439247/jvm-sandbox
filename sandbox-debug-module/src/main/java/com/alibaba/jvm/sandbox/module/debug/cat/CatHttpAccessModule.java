@@ -10,8 +10,6 @@ import com.dianping.cat.Cat;
 import com.dianping.cat.CatConstants;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
-import com.dianping.cat.message.internal.DefaultTransaction;
-import com.dianping.cat.status.http.HttpStats;
 import com.dianping.cat.util.UrlParser;
 import org.kohsuke.MetaInfServices;
 
@@ -43,6 +41,14 @@ public class CatHttpAccessModule extends CatModule {
 
     static {
         excludeUrls.add("favicon.ico");
+        excludePrefixes.add(".jpg");
+        excludePrefixes.add(".jpeg");
+        excludePrefixes.add(".png");
+        excludePrefixes.add(".gif");
+        excludePrefixes.add(".js");
+        excludePrefixes.add(".css");
+        excludePrefixes.add(".woff");
+        excludePrefixes.add(".woff2");
     }
 
     @Override
@@ -56,7 +62,6 @@ public class CatHttpAccessModule extends CatModule {
      */
     class HttpAccess {
         Transaction transaction;
-        int status;
         long beginTimestamp;
     }
 
@@ -106,7 +111,7 @@ public class CatHttpAccessModule extends CatModule {
 
                             if (!exclude) {
                                 for (String prefix : excludePrefixes) {
-                                    if (uri.startsWith(prefix)) {
+                                    if (uri.endsWith(prefix)) {
                                         exclude = true;
                                         break;
                                     }
@@ -119,70 +124,29 @@ public class CatHttpAccessModule extends CatModule {
                     }
 
 
-                    private void customizeStatus(Transaction t, Object req) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        Object catStatus = invokeMethod(req, "getAttribute", CatConstants.CAT_STATE);
+                    private void logRequestInfo(Object req, int responseCode) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+                        StringBuilder sb = new StringBuilder();
 
-                        if (catStatus != null) {
-                            t.setStatus(catStatus.toString());
-                        } else {
-                            t.setStatus(Message.SUCCESS);
+                        //######## header ##############
+                        String clientIp = invokeMethod(req, "getHeader", "x-forwarded-for");
+                        String remoteAddr = invokeMethod(req, "getRemoteAddr");
+                        if (clientIp == null) {
+                            clientIp = invokeMethod(req, "getHeader", "X-Forwarded-For");
                         }
-                    }
-
-                    private void customizeUri(Transaction t, Object req) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        if (t instanceof DefaultTransaction) {
-                            Object catPageType = invokeMethod(req, "getAttribute", CatConstants.CAT_PAGE_TYPE);
-
-                            if (catPageType instanceof String) {
-                                ((DefaultTransaction) t).setType(catPageType.toString());
-                            }
-
-                            Object catPageUri = invokeMethod(req, "getAttribute", CatConstants.CAT_PAGE_URI);
-
-                            if (catPageUri instanceof String) {
-                                ((DefaultTransaction) t).setName(catPageUri.toString());
-                            }
+                        if (clientIp == null) {
+                            clientIp = remoteAddr;
                         }
-                    }
+                        sb.append(">>>>>>header\nIPS=").append(clientIp)
+                                .append("\nVirtualIP=").append(remoteAddr)
+                                .append("\nServer=").append((String) invokeMethod(req, "getServerName"))
+                                .append("\nReferer=").append((String) invokeMethod(req, "getHeader", "referer"))
+                                .append("\nAgent=").append((String) invokeMethod(req, "getHeader", "user-agent"));
 
-                    private void logPayload(Object req, boolean top, String type) {
-                        try {
-                            if (top) {
-                                logRequestClientInfo(req, type);
-                                logRequestPayload(req, type);
-                            } else {
-                                logRequestPayload(req, type);
-                            }
-                        } catch (Exception e) {
-                            Cat.logError(e);
-                        }
-                    }
-
-                    private void logRequestClientInfo(Object req, String type) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        StringBuilder sb = new StringBuilder(1024);
-                        String ip;
-                        String ipForwarded = invokeMethod(req, "getHeader", "x-forwarded-for");
-
-                        if (ipForwarded == null) {
-                            ip = invokeMethod(req, "getRemoteAddr");
-                        } else {
-                            ip = ipForwarded;
-                        }
-
-                        sb.append("IPS=").append(ip);
-                        sb.append("&VirtualIP=").append((String) invokeMethod(req, "getRemoteAddr"));
-                        sb.append("&Server=").append((String) invokeMethod(req, "getServerName"));
-                        sb.append("&Referer=").append((String) invokeMethod(req, "getHeader", "referer"));
-                        sb.append("&Agent=").append((String) invokeMethod(req, "getHeader", "user-agent"));
-
-                        Cat.logEvent(type, type + ".Server", Message.SUCCESS, sb.toString());
-                    }
-
-                    private void logRequestPayload(Object req, String type) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        StringBuilder sb = new StringBuilder(256);
-                        String scheme = invokeMethod(req, "getScheme");
-                        sb.append(scheme.toUpperCase()).append('/');
-                        sb.append((String) invokeMethod(req, "getMethod")).append(' ').append((String) invokeMethod(req, "getRequestURI"));
+                        //##########request info ################
+                        sb.append("\n>>>>>>request\n")
+                                .append((String) invokeMethod(req, "getMethod")).append(' ')
+                                .append((String) invokeMethod(req, "getScheme")).append(' ')
+                                .append((String) invokeMethod(req, "getRequestURI"));
 
                         String qs = invokeMethod(req, "getQueryString");
 
@@ -190,7 +154,8 @@ public class CatHttpAccessModule extends CatModule {
                             sb.append('?').append(qs);
                         }
 
-                        Cat.logEvent(type, type + ".Method", Message.SUCCESS, sb.toString());
+                        // record event
+                        Cat.logEvent(getCatType(), "CODE-" + responseCode, Message.SUCCESS, sb.toString());
                     }
 
 
@@ -201,12 +166,10 @@ public class CatHttpAccessModule extends CatModule {
                         if (excludeURI(uri))
                             return;
 
-                        boolean top = Cat.getManager().getThreadLocalMessageTree().getMessage() == null;
-
 
                         HttpAccess ha = new HttpAccess();
-                        ha.status = 0;
                         Transaction t = Cat.newTransaction(getCatType(), UrlParser.format(uri));
+                        //###########cross ################
                         Enumeration<String> headerNames = invokeMethod(req, "getHeaderNames");
                         CatContext context = new CatContext();
                         while (headerNames.hasMoreElements()) {
@@ -215,7 +178,8 @@ public class CatHttpAccessModule extends CatModule {
                             context.addProperty(key, value);
                         }
                         Cat.logRemoteCallServer(context);
-                        logPayload(req, top, getCatType());
+                        //#################################
+
 
                         ha.transaction = t;
                         ha.beginTimestamp = System.currentTimeMillis();
@@ -243,23 +207,24 @@ public class CatHttpAccessModule extends CatModule {
                         final Object req = advice.getParameterArray()[0];
                         final Object response = advice.getParameterArray()[1];
                         try {
-                            customizeStatus(ha.transaction, req);
+                            int status = invokeMethod(response, "getStatus");
+                            logRequestInfo(req, status);
                             if (advice.getThrowable() != null) {
                                 ha.transaction.setStatus(advice.getThrowable());
+                            } else {
+                                if (status == 200) {
+                                    ha.transaction.setStatus(Transaction.SUCCESS);
+                                } else if (status >= 500) {
+                                    ha.transaction.setStatus(status + "");
+                                } else { //301 302 400 404 +
+                                    ha.transaction.setStatus(Transaction.SUCCESS);
+                                }
                             }
                         } catch (Exception e) {
-                            ha.status = 500;
                             ha.transaction.setStatus(e);
                             Cat.logError(e);
                         } finally {
-                            try {
-                                customizeUri(ha.transaction, req);
-                                ha.transaction.complete();
-                                int status = invokeMethod(response, "getStatus");
-                                HttpStats.currentStatsHolder().doRequestStats(System.currentTimeMillis() - ha.beginTimestamp, ha.status > 0 ? ha.status : status);
-                            } catch (Exception e) {
-                                stLogger.error("cat http access log error", e);
-                            }
+                            ha.transaction.complete();
                         }
                     }
 
