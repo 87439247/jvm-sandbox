@@ -1,19 +1,16 @@
 package com.alibaba.jvm.sandbox.module.debug.cat;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
-import com.alibaba.jvm.sandbox.module.debug.util.beantrace.BeanTraces;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
-import org.apache.commons.io.output.StringBuilderWriter;
-import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.MethodUtils;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
@@ -138,9 +135,8 @@ public class CatDubboModule extends CatModule {
                 if (throwable != null) {
                     String callUrl = invokeMethod(event.url, "toString");
                     Object[] args = invokeMethod(advice.getParameterArray()[1], "getArguments");
-                    StringBuilderWriter writer = BeanTraces.printBeanTraceAscii(args);
                     Cat.logEvent(getCatType(), "url", "500", callUrl);
-                    Cat.logEvent(getCatType(), "params", "500", writer.toString());
+                    Cat.logEvent(getCatType(), "params", "500", JSON.toJSONString(args));
                     Cat.logError(throwable);
                     event.transaction.setStatus(throwable);
                 } else {

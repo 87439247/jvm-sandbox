@@ -1,12 +1,12 @@
 package com.alibaba.jvm.sandbox.module.debug.cat;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
-import com.alibaba.jvm.sandbox.module.debug.util.beantrace.BeanTraces;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
@@ -57,7 +57,7 @@ public class CatElasticJobModule extends CatModule {
                     private void finish(Advice advice) {
                         Transaction t = advice.attachment();
                         try {
-                            Cat.logEvent(getCatType(), t.getName(), Message.SUCCESS, BeanTraces.printBeanTraceAscii(advice.getParameterArray()[0]).toString());
+                            Cat.logEvent(getCatType(), t.getName(), Message.SUCCESS, JSON.toJSONString(advice.getParameterArray()[0]));
                             Cat.logMetricForCount(invokeMethod(advice.getParameterArray()[0], "getJobName"));
                             if (advice.getThrowable() != null) {
                                 t.setStatus(advice.getThrowable());
