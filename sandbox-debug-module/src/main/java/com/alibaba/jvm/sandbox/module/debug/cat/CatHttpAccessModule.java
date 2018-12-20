@@ -57,15 +57,6 @@ public class CatHttpAccessModule extends CatModule {
     }
 
 
-    /**
-     * HTTP接入信息
-     */
-    class HttpAccess {
-        Transaction transaction;
-        long beginTimestamp;
-    }
-
-
     @Override
     public void loadCompleted() {
         buildingHttpServletService();
@@ -123,39 +114,34 @@ public class CatHttpAccessModule extends CatModule {
                         }
                     }
 
+                    final String SEP = "-----------------------\n";
 
                     private void logRequestInfo(Object req, int responseCode) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        StringBuilder sb = new StringBuilder();
+                        StringBuilder builder = new StringBuilder();
+                        builder.append("\r\n").append("METHOD=").append((String) invokeMethod(req, "getMethod"));
 
-                        //######## header ##############
-                        String clientIp = invokeMethod(req, "getHeader", "x-forwarded-for");
-                        String remoteAddr = invokeMethod(req, "getRemoteAddr");
-                        if (clientIp == null) {
-                            clientIp = invokeMethod(req, "getHeader", "X-Forwarded-For");
+                        Enumeration headerNames = invokeMethod(req, "getHeaderNames");
+                        while (headerNames.hasMoreElements()) {
+                            String headerName = (String) headerNames.nextElement();
+                            builder.append("\r\n").append("Header Name - ").append(headerName).append(", Value - ").append((String) invokeMethod(req, "getHeader", headerName));
                         }
-                        if (clientIp == null) {
-                            clientIp = remoteAddr;
+                        builder.append(SEP);
+
+                        Enumeration params = invokeMethod(req, "getParameterNames");
+                        while (params.hasMoreElements()) {
+                            String paramName = (String) params.nextElement();
+                            builder.append("\r\n").append("Parameter Name - ").append(paramName).append(", Value - ").append((String) invokeMethod(req, "getParameter", paramName));
                         }
-                        sb.append(">>>>>>header\nIPS=").append(clientIp)
-                                .append("\nVirtualIP=").append(remoteAddr)
-                                .append("\nServer=").append((String) invokeMethod(req, "getServerName"))
-                                .append("\nReferer=").append((String) invokeMethod(req, "getHeader", "referer"))
-                                .append("\nAgent=").append((String) invokeMethod(req, "getHeader", "user-agent"));
+                        builder.append(SEP);
 
                         //##########request info ################
-                        sb.append("\n>>>>>>request\n")
+                        builder.append("\n>>>>>>request\n")
                                 .append((String) invokeMethod(req, "getMethod")).append(' ')
                                 .append((String) invokeMethod(req, "getScheme")).append(' ')
                                 .append((String) invokeMethod(req, "getRequestURI"));
 
-                        String qs = invokeMethod(req, "getQueryString");
-
-                        if (qs != null) {
-                            sb.append('?').append(qs);
-                        }
-
                         // record event
-                        Cat.logEvent(getCatType(), "CODE-" + responseCode, Message.SUCCESS, sb.toString());
+                        Cat.logEvent(getCatType(), "CODE-" + responseCode, Message.SUCCESS, builder.toString());
                     }
 
 
@@ -167,7 +153,6 @@ public class CatHttpAccessModule extends CatModule {
                             return;
 
 
-                        HttpAccess ha = new HttpAccess();
                         Transaction t = Cat.newTransaction(getCatType(), UrlParser.format(uri));
                         //###########cross ################
                         Enumeration<String> headerNames = invokeMethod(req, "getHeaderNames");
@@ -180,11 +165,7 @@ public class CatHttpAccessModule extends CatModule {
                         Cat.logRemoteCallServer(context);
                         //#################################
 
-
-                        ha.transaction = t;
-                        ha.beginTimestamp = System.currentTimeMillis();
-
-                        advice.attach(ha);
+                        advice.attach(t);
                     }
 
                     @Override
@@ -203,28 +184,32 @@ public class CatHttpAccessModule extends CatModule {
                      * @param advice 通知
                      */
                     private void finishing(Advice advice) {
-                        HttpAccess ha = advice.attachment();
-                        final Object req = advice.getParameterArray()[0];
-                        final Object response = advice.getParameterArray()[1];
-                        try {
-                            int status = invokeMethod(response, "getStatus");
-                            logRequestInfo(req, status);
-                            if (advice.getThrowable() != null) {
-                                ha.transaction.setStatus(advice.getThrowable());
-                            } else {
-                                if (status == 200) {
-                                    ha.transaction.setStatus(Transaction.SUCCESS);
-                                } else if (status >= 500) {
-                                    ha.transaction.setStatus(status + "");
-                                } else { //301 302 400 404 +
-                                    ha.transaction.setStatus(Transaction.SUCCESS);
+                        Transaction t = advice.attachment();
+                        if (t != null) {
+                            Object req = advice.getParameterArray()[0];
+                            Object response = advice.getParameterArray()[1];
+                            try {
+                                int status = invokeMethod(response, "getStatus");
+
+                                if (advice.getThrowable() != null) {
+                                    t.setStatus(advice.getThrowable());
+                                } else {
+                                    if (status == 200) {
+                                        t.setStatus(Transaction.SUCCESS);
+                                    } else if (status >= 500) {
+                                        logRequestInfo(req, status);
+                                        t.setStatus(status + "");
+                                    } else { //301 302 400 404 +
+                                        logRequestInfo(req, status);
+                                        t.setStatus(Transaction.SUCCESS);
+                                    }
                                 }
+                            } catch (Exception e) {
+                                t.setStatus(e);
+                                Cat.logError(e);
+                            } finally {
+                                t.complete();
                             }
-                        } catch (Exception e) {
-                            ha.transaction.setStatus(e);
-                            Cat.logError(e);
-                        } finally {
-                            ha.transaction.complete();
                         }
                     }
 
