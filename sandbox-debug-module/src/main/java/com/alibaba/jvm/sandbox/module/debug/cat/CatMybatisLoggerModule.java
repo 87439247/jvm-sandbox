@@ -1,21 +1,19 @@
 package com.alibaba.jvm.sandbox.module.debug.cat;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
 import com.alibaba.jvm.sandbox.api.resource.ModuleEventWatcher;
-import com.alibaba.jvm.sandbox.module.debug.util.beantrace.BeanTraces;
 import com.dianping.cat.Cat;
 import com.dianping.cat.message.Message;
 import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
-import java.util.HashMap;
 
-import static com.alibaba.jvm.sandbox.module.debug.util.FieldUtils.invokeField;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 /**
@@ -69,8 +67,7 @@ public class CatMybatisLoggerModule extends CatModule {
                             try {
                                 if (advice.getThrowable() != null) {
                                     t.setStatus(advice.getThrowable());
-                                    Object param = advice.getParameterArray()[1];
-                                    Cat.logEvent(getCatType(), "SQL.PARAM", "500", BeanTraces.printBeanTraceAscii(param).toString());
+                                    Cat.logEvent(getCatType(), "SQL.PARAM", "500", JSON.toJSONString(advice.getParameterArray()[1]));
                                     Cat.logError(advice.getThrowable());
                                 } else {
                                     t.setStatus(Message.SUCCESS);
