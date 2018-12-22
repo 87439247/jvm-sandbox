@@ -12,15 +12,10 @@ import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
-import java.util.Map;
-
-import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
-import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
-import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
 @MetaInfServices(Module.class)
-@Information(id = "cat-mysql-prepared-statement", version = "0.0.1", author = "yuanyue@staff.hexun.com")
-public class CatMysqlPreparedStatementModule extends CatModule {
+@Information(id = "cat-mysql-statement", version = "0.0.1", author = "yuanyue@staff.hexun.com")
+public class CatMysqlStatementModule extends CatModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;
@@ -32,30 +27,34 @@ public class CatMysqlPreparedStatementModule extends CatModule {
 
 
     /**
-     * named("execute")
+     * return named("execute")
      * .or(named("executeQuery"))
      * .or(named("executeUpdate"))
-     * .or(named("executeLargeUpdate"));
+     * .or(named("executeLargeUpdate"))
+     * .or(named("executeBatchInternal"))
+     * .or(named("executeUpdateInternal"))
+     * .or(named("executeQuery"))
+     * .or(named("executeBatch"));
      */
     private void monitorMysqlPreparedStatement() {
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("com.mysql.jdbc.PreparedStatement")
+                .onClass("com.mysql.jdbc.StatementImpl")
                 .onBehavior("execute")
                 .onBehavior("executeQuery")
                 .onBehavior("executeUpdate")
                 .onBehavior("executeLargeUpdate")
+                .onBehavior("executeBatchInternal")
+                .onBehavior("executeUpdateInternal")
+                .onBehavior("executeBatch")
 
-                .onClass("com.mysql.cj.jdbc.PreparedStatement")
+                .onClass("com.mysql.cj.jdbc.StatementImpl")
                 .onBehavior("execute")
                 .onBehavior("executeQuery")
                 .onBehavior("executeUpdate")
                 .onBehavior("executeLargeUpdate")
-
-                .onClass("com.mysql.jdbc.JDBC42PreparedStatement")
-                .onBehavior("execute")
-                .onBehavior("executeQuery")
-                .onBehavior("executeUpdate")
-                .onBehavior("executeLargeUpdate")
+                .onBehavior("executeBatchInternal")
+                .onBehavior("executeUpdateInternal")
+                .onBehavior("executeBatch")
 
                 .onWatch(new AdviceListener() {
 

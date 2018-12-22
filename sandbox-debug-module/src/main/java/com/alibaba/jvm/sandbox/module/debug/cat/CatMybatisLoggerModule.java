@@ -14,6 +14,7 @@ import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
 
+import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 /**
@@ -107,33 +108,11 @@ public class CatMybatisLoggerModule extends CatModule {
                     public void afterThrowing(Advice advice) {
                         finish(advice);
                     }
-
-                    private void finish(Advice advice) {
-                        Transaction t = advice.attachment();
-                        if (t != null) {
-                            try {
-                                if (advice.getThrowable() != null) {
-                                    t.setStatus(advice.getThrowable());
-                                    Object boundSql = advice.getParameterArray()[5];
-                                    String sql = invokeMethod(boundSql, "getSql");
-                                    Cat.logEvent(getCatType(), "SQL", "500", sql);
-                                    Cat.logError(advice.getThrowable());
-                                } else {
-                                    t.setStatus(Message.SUCCESS);
-                                }
-                            } catch (Exception e) {
-                                t.setStatus(e);
-                                Cat.logError(e);
-                            } finally {
-                                t.complete();
-                            }
-                        }
-                    }
                 });
     }
 
     @Override
     String getCatType() {
-        return "SQL";
+        return "Mybatis";
     }
 }
