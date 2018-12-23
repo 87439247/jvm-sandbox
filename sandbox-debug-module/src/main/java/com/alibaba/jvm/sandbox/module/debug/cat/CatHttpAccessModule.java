@@ -2,6 +2,7 @@ package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.Information;
 import com.alibaba.jvm.sandbox.api.Module;
+import com.alibaba.jvm.sandbox.api.http.Http;
 import com.alibaba.jvm.sandbox.api.listener.ext.Advice;
 import com.alibaba.jvm.sandbox.api.listener.ext.AdviceListener;
 import com.alibaba.jvm.sandbox.api.listener.ext.EventWatchBuilder;
@@ -14,6 +15,9 @@ import com.dianping.cat.util.UrlParser;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -33,6 +37,21 @@ public class CatHttpAccessModule extends CatModule {
 
     @Resource
     private ModuleEventWatcher moduleEventWatcher;
+
+    private boolean booleanEnableDetail = false;
+
+    @Http("/enable-detail")
+    public void watch(final HttpServletRequest req,
+                      final HttpServletResponse resp) throws IOException {
+        try {
+            String enableDetail = req.getParameter("enableDetail");
+            if (enableDetail != null) {
+                booleanEnableDetail = enableDetail.equals("yes") || enableDetail.equals("true");
+            }
+        } catch (Exception e) {
+            return;
+        }
+    }
 
 
     private static Set<String> excludeUrls = new HashSet<>();
@@ -117,9 +136,7 @@ public class CatHttpAccessModule extends CatModule {
                     final String SEP = "-----------------------\n";
 
                     private void logRequestInfo(Object req, int responseCode) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-                        StringBuilder builder = new StringBuilder();
-                        builder.append("\r\n").append("METHOD=").append((String) invokeMethod(req, "getMethod"));
-
+                        StringBuilder builder = new StringBuilder("\r\n");
                         Enumeration headerNames = invokeMethod(req, "getHeaderNames");
                         while (headerNames.hasMoreElements()) {
                             String headerName = (String) headerNames.nextElement();
@@ -132,7 +149,7 @@ public class CatHttpAccessModule extends CatModule {
                             String paramName = (String) params.nextElement();
                             builder.append("\r\n").append("Parameter Name - ").append(paramName).append(", Value - ").append((String) invokeMethod(req, "getParameter", paramName));
                         }
-                        builder.append(SEP);
+                        builder.append("\n");
 
                         //##########request info ################
                         builder.append("\n>>>>>>request\n")
@@ -195,6 +212,9 @@ public class CatHttpAccessModule extends CatModule {
                                     t.setStatus(advice.getThrowable());
                                 } else {
                                     if (status == 200) {
+                                        if (booleanEnableDetail) {
+                                            logRequestInfo(req, status);
+                                        }
                                         t.setStatus(Transaction.SUCCESS);
                                     } else if (status >= 500) {
                                         logRequestInfo(req, status);
