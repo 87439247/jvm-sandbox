@@ -2,13 +2,14 @@ package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
+import com.alibaba.jvm.sandbox.module.debug.HttpSupported;
 import com.alibaba.jvm.sandbox.module.debug.util.IpUtils;
 import com.dianping.cat.Cat;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class CatModule implements Module, LoadCompleted {
+public abstract class CatModule extends HttpSupported implements Module, LoadCompleted {
 
     public static final String CAT_DOMAIN;
 
