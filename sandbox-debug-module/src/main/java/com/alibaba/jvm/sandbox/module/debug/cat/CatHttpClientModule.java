@@ -36,8 +36,8 @@ public class CatHttpClientModule extends CatModule {
      */
     private void monitorAbstractHttpClient() {
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("org.apache.http.impl.client.AbstractHttpClient")
-                .onBehavior("doExecute")
+//                .onClass("org.apache.http.impl.client.AbstractHttpClient")
+//                .onBehavior("doExecute")
                 .onClass("org.apache.http.impl.client.DefaultRequestDirector")
                 .onBehavior("execute")
                 .onClass("org.apache.http.impl.client.InternalHttpClient")
