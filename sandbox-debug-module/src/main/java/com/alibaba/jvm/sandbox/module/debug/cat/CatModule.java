@@ -29,7 +29,7 @@ public abstract class CatModule extends HttpSupported implements Module, LoadCom
         envBuilder.append("\nHOSTNAME=").append(IpUtils.getHostName());
         internalLogger.error(envBuilder.toString());
         final String domainKey = "catdomain";
-        CAT_DOMAIN = getConfigFromEnv(domainKey, "catdemo");
+        CAT_DOMAIN = getConfigFromEnv(domainKey, "catdemo").toLowerCase();
         Cat.initializeByDomainForce(CAT_DOMAIN);
     }
 
