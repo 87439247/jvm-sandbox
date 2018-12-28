@@ -34,6 +34,7 @@ public class CatRocketmqModule extends CatModule {
                 .onClass("org.apache.rocketmq.client.impl.producer.DefaultMQProducerImpl")
                 .includeSubClasses()
                 .onBehavior("sendDefaultImpl")
+                .onBehavior("sendSelectImpl")
                 .onWatch(new AdviceListener() {
 
                     @Override
@@ -41,7 +42,7 @@ public class CatRocketmqModule extends CatModule {
                         Object message = advice.getParameterArray()[0];
                         String topic = invokeMethod(message, "getTopic");
                         Transaction t = Cat.newTransaction(getCatType() + "-P", topic);
-                        advice.attach(t, topic);
+                        advice.attach(t);
                     }
 
                     @Override
@@ -78,9 +79,11 @@ public class CatRocketmqModule extends CatModule {
 
     private void monitorRocketmqConsumerContext() {
         new EventWatchBuilder(moduleEventWatcher)
-                .onClass("org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently").includeSubClasses()
+                .onClass("org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently")
+                .includeSubClasses()
                 .onBehavior("consumeMessage")
-                .onClass("org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly").includeSubClasses()
+                .onClass("org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly")
+                .includeSubClasses()
                 .onBehavior("consumeMessage")
                 .onWatch(new AdviceListener() {
 
