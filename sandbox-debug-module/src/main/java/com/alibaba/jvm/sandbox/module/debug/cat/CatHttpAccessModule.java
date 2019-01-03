@@ -47,9 +47,14 @@ public class CatHttpAccessModule extends CatModule {
             String enableDetail = req.getParameter("enableDetail");
             if (enableDetail != null) {
                 booleanEnableDetail = enableDetail.equals("yes") || enableDetail.equals("true");
+                resp.getWriter().print("enable http detail log ok");
+            } else {
+                booleanEnableDetail = false;
+                resp.getWriter().print("disabled http detail log [yes is enable]");
             }
         } catch (Exception e) {
-            return;
+            resp.getWriter().print("error");
+            stLogger.error("设置http详细信息错误", e);
         }
     }
 
