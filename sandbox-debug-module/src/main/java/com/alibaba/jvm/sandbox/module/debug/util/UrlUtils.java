@@ -1,104 +1,64 @@
 package com.alibaba.jvm.sandbox.module.debug.util;
 
-import io.netty.util.internal.ConcurrentSet;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.regex.Pattern;
-
+/**
+ * url 处理工具
+ *
+ * @author yuanyue@staff.hexun.com
+ */
 public class UrlUtils {
-    private static ConcurrentSet<Character> words = new ConcurrentSet<>();
 
-    private static ConcurrentSet<Character> numbers = new ConcurrentSet<>();
-
-    static {
-        String word = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ/.?&=_";
-        String number = "0123456789";
-        for (char w : word.toCharArray()) {
-            words.add(w);
-        }
-        for (char n : number.toCharArray()) {
-            numbers.add(n);
-        }
+    private UrlUtils(){
+        // do nothing
     }
 
-    public static String rebuildPath(String uri) {
-        if (StringUtils.isEmpty(uri)) {
+    /**
+     * 将url中的变量值替换掉,能使之在cat报表里面,成为一个可以分类的标准
+     *
+     * @param url url通常不带host和协议
+     * @return 处理后的地址
+     */
+    public static String rebuildPath(String url) {
+        if (StringUtils.isEmpty(url)) {
             return "";
         }
-        int start = uri.indexOf("://");
-        if (start >= 0) {
-            int pathStart = uri.indexOf("/", start + 3);
-            uri = uri.substring(pathStart);
-        }
         StringBuilder builder = new StringBuilder();
-        boolean preIsNum = false;
-        final String num = "(N)";
-        for (char c : uri.toCharArray()) {
-
-            if (words.contains(c)) {
-                if (preIsNum) {
-                    preIsNum = false;
-                    builder.append(num);
-                }
-                builder.append(c);
-            } else if (numbers.contains(c)) {
-                preIsNum = true;
-            } else {
-                if (preIsNum) {
-                    preIsNum = false;
-                    builder.append(num);
-                }
-                final char sep = 'I';
-                builder.append(sep);
+        final char queryStart = '=';
+        final char queryStop = '&';
+        final char questionMark = '?';
+        boolean queryStarted = false;
+        boolean queryReplacing = false;
+        boolean digitReplacing = false;
+        for (int i = 0; i < url.length(); i++) {
+            char c = url.charAt(i);
+            if (c == questionMark) {
+                queryStarted = true;
             }
-        }
-        if (preIsNum) {
-            builder.append(num);
+            //是否已经到了问号,问号后的逻辑是保留参数名去掉参数值.问号前path的逻辑是判断数字
+            if (queryStarted) {
+                if (c == queryStop) {
+                    queryReplacing = false;
+                }
+                if (!queryReplacing) {
+                    builder.append(c);
+                }
+                if (c == queryStart) {
+                    queryReplacing = true;
+                }
+            } else {
+                if (c < 48 || c > 57) {
+                    digitReplacing = false;
+                }
+                if (!digitReplacing && c >= 48 && c <= 57) {
+                    digitReplacing = true;
+                    builder.append("(num)");
+                }
+                if (!digitReplacing) {
+                    builder.append(c);
+                }
+            }
         }
         return builder.toString();
     }
-
-    public static void main(String[] args) {
-        String url = "http://abc.com:8230/asdfsdf/asde.jsp?param1=123829djkfed&param2=f232fkd";
-        System.out.println(rebuildPath(url));
-        if (url.contains("?")) {
-            Pattern pattern = Pattern.compile("&?.*?\\=(.*?)");
-
-            StringBuilder builder = new StringBuilder();
-            char start = '=';
-            char stop = '&';
-            char questionMark = '?';
-            boolean queryStarted = false;
-            boolean replacing = false;
-            for (int i = 0; i < url.length(); i++) {
-                char c = url.charAt(i);
-                if (c == questionMark) {
-                    queryStarted = true;
-                }
-
-                if (c == stop) {
-                    replacing = false;
-                }
-                if (!replacing) {
-                    builder.append(c);
-                }
-                if (c == start) {
-                    replacing = true;
-                }
-            }
-
-            System.out.println(builder);
-
-//            pattern.
-//
-//
-//            String[] split = url.split("\\?");
-//            StringBuilder result = new StringBuilder(split[0]);
-//            if(split.length >= 2){
-//                String params = split[1];
-//                String[] args1 = params.split("=");
-//            }
-        }
-    }
-
 }
