@@ -151,18 +151,26 @@ usage: ${0} [h] [<p:> [vlRFfu:a:A:d:m:I:P:C:X]]
             ${0} -p <PID> -P 3658 -v
 
 
-    -C : Connect server only
+    -C : connect server only
          No attach target JVM, just connect server with appoint IP:PORT only.
 
          EXAMPLE:
              ${0} -C -I 192.168.0.1 -P 3658 -m debug
 
-    -S : Shutdown server
+    -S : shutdown server
          Shutdown jvm-sandbox\` server
 
-    -n : Namespace
+    -n : namespace
          Appoint the jvm-sandbox\` namespace
          when default, use \"${DEFAULT_NAMESPACE}\"
+
+    -d : data
+         Send the command & data to module's command handle method.
+         <MODULE-ID>/<COMMAND-NAME>[?<PARAM1=VALUE1>[&PARAM2=VALUE2]]
+
+         EXAMPLE:
+            ${0} -d 'sandbox-info/version'
+            ${0} -d 'sandbox-module-mgr/detail?id=sandbox-info'
 
 "
 }
@@ -178,7 +186,7 @@ check_permission()
 
     # touch attach token file
     touch ${SANDBOX_TOKEN_FILE} \
-        || exit_on_err 1 "permission denied, ${SANDBOX_TOKEN_FILE} is not readable"
+        || exit_on_err 1 "permission denied, ${SANDBOX_TOKEN_FILE} is not readable."
 }
 
 # reset sandbox work environment
@@ -186,22 +194,35 @@ check_permission()
 reset_for_env()
 {
 
-    # if env define the JAVA_HOME, use it first
-    # if is alibaba opts, use alibaba ops's default JAVA_HOME
-    # [ -z ${JAVA_HOME} ] && JAVA_HOME=/opt/taobao/java
-    if [[ -z "${JAVA_HOME}" ]]; then
-        JAVA_HOME=$(ps aux|grep ${TARGET_JVM_PID}|grep java|awk '{print $11}'|xargs ls -l|awk '{if($1~/^l/){print $11}else{print $9}}'|sed 's/\/bin\/java//g')
-    fi
+    # use the env JAVA_HOME for default
+    [[ ! -z ${JAVA_HOME} ]] \
+        && SANDBOX_JAVA_HOME="${JAVA_HOME}"
 
-	
-    # check the jvm version, we need 1.6+
-    local JAVA_VERSION=$("${JAVA_HOME}"/bin/java -version 2>&1|awk -F '"' '/version/&&$2>"1.5"{print $2}')
-    [[ ! -x "${JAVA_HOME}" || -z ${JAVA_VERSION} ]] \
-        && exit_on_err 1 "illegal ENV, please set \$JAVA_HOME to JDK6+"
+    # use the target JVM for SANDBOX_JAVA_HOME
+    [[ -z ${SANDBOX_JAVA_HOME} ]] \
+        && SANDBOX_JAVA_HOME="$(\
+            ps aux\
+            |grep ${TARGET_JVM_PID}\
+            |grep java\
+            |awk '{print $11}'\
+            |xargs ls -l\
+            |awk '{if($1~/^l/){print $11}else{print $9}}'\
+            |sed 's/\/bin\/java//g'\
+        )"
 
-    # reset BOOT_CLASSPATH
-    [ -f "${JAVA_HOME}"/lib/tools.jar ] \
-        && BOOT_CLASSPATH=-Xbootclasspath/a:"${JAVA_HOME}"/lib/tools.jar
+    [[ ! -x "${SANDBOX_JAVA_HOME}" ]] \
+        && exit_on_err 1 "permission denied, ${SANDBOX_JAVA_HOME} is not accessible! please set JAVA_HOME"
+
+    [[ ! -x "${SANDBOX_JAVA_HOME}/bin/java" ]] \
+        && exit_on_err 1 "permission denied, ${SANDBOX_JAVA_HOME}/bin/java is not executable!"
+
+    # check the jvm version, we need 6+
+    local JAVA_VERSION=$("${SANDBOX_JAVA_HOME}/bin/java" -version 2>&1|awk -F '"' '/version/&&$2>"1.5"{print $2}')
+    [[ -z ${JAVA_VERSION} ]] \
+        && exit_on_err 1 "illegal java version: ${JAVA_VERSION}, please make sure target java process: ${TARGET_JVM_PID} run int JDK[6,11]"
+
+    [[ -f "${SANDBOX_JAVA_HOME}"/lib/tools.jar ]] \
+        && SANDBOX_JVM_OPS="${SANDBOX_JVM_OPS} -Xbootclasspath/a:${SANDBOX_JAVA_HOME}/lib/tools.jar"
 
 }
 
@@ -214,8 +235,7 @@ function attach_jvm() {
     local token=`date |head|cksum|sed 's/ //g'`
 
     # attach target jvm
-    "${JAVA_HOME}"/bin/java \
-        "${BOOT_CLASSPATH}" \
+    "${SANDBOX_JAVA_HOME}/bin/java" \
         ${SANDBOX_JVM_OPS} \
         -jar ${SANDBOX_LIB_DIR}/sandbox-core.jar \
         ${TARGET_JVM_PID} \
@@ -307,43 +327,43 @@ function main() {
 
     # -v show version
     [[ ! -z ${OP_VERSION} ]] \
-        && sandbox_curl_with_exit "info/version"
+        && sandbox_curl_with_exit "sandbox-info/version"
 
     # -l list loaded modules
     [[ ! -z ${OP_MODULE_LIST} ]] \
-        && sandbox_curl_with_exit "module-mgr/list"
+        && sandbox_curl_with_exit "sandbox-module-mgr/list"
 
     # -F force flush module
     [[ ! -z ${OP_MODULE_FORCE_FLUSH} ]] \
-        && sandbox_curl_with_exit "module-mgr/flush" "&force=true"
+        && sandbox_curl_with_exit "sandbox-module-mgr/flush" "&force=true"
 
     # -f flush module
     [[ ! -z ${OP_MODULE_FLUSH} ]] \
-        && sandbox_curl_with_exit "module-mgr/flush" "&force=false"
+        && sandbox_curl_with_exit "sandbox-module-mgr/flush" "&force=false"
 
     # -R reset sandbox
     [[ ! -z ${OP_MODULE_RESET} ]] \
-        && sandbox_curl_with_exit "module-mgr/reset"
+        && sandbox_curl_with_exit "sandbox-module-mgr/reset"
 
     # -u unload module
     [[ ! -z ${OP_MODULE_UNLOAD} ]] \
-        && sandbox_curl_with_exit "module-mgr/unload" "&action=unload&ids=${ARG_MODULE_UNLOAD}"
+        && sandbox_curl_with_exit "sandbox-module-mgr/unload" "&action=unload&ids=${ARG_MODULE_UNLOAD}"
 
     # -a active module
     [[ ! -z ${OP_MODULE_ACTIVE} ]] \
-        && sandbox_curl_with_exit "module-mgr/active" "&ids=${ARG_MODULE_ACTIVE}"
+        && sandbox_curl_with_exit "sandbox-module-mgr/active" "&ids=${ARG_MODULE_ACTIVE}"
 
     # -A frozen module
     [[ ! -z ${OP_MODULE_FROZEN} ]] \
-        && sandbox_curl_with_exit "module-mgr/frozen" "&ids=${ARG_MODULE_FROZEN}"
+        && sandbox_curl_with_exit "sandbox-module-mgr/frozen" "&ids=${ARG_MODULE_FROZEN}"
 
     # -m module detail
     [[ ! -z ${OP_MODULE_DETAIL} ]] \
-        && sandbox_curl_with_exit "module-mgr/detail" "&id=${ARG_MODULE_DETAIL}"
+        && sandbox_curl_with_exit "sandbox-module-mgr/detail" "&id=${ARG_MODULE_DETAIL}"
 
     # -S shutdown
     [[ ! -z ${OP_SHUTDOWN} ]] \
-        && sandbox_curl_with_exit "control/shutdown"
+        && sandbox_curl_with_exit "sandbox-control/shutdown"
 
     # -d debug
     if [[ ! -z ${OP_DEBUG} ]]; then
@@ -352,7 +372,7 @@ function main() {
     fi
 
     # default
-    sandbox_curl "info/version"
+    sandbox_curl "sandbox-info/version"
     exit
 
 }

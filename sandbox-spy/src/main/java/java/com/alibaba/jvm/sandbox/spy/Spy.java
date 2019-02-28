@@ -3,6 +3,8 @@ package java.com.alibaba.jvm.sandbox.spy;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 间谍类，藏匿在各个ClassLoader中
@@ -18,6 +20,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author luanjia@taobao.com
  */
 public class Spy {
+
+    /**
+     * 控制Spy是否在发生异常时主动对外抛出
+     * T:主动对外抛出，会中断方法
+     * F:不对外抛出，只将异常信息打印出来
+     */
+    public static volatile boolean isSpyThrowException = false;
 
     private static final Class<Spy.Ret> SPY_RET_CLASS = Spy.Ret.class;
 
@@ -78,11 +87,33 @@ public class Spy {
 
         // 如果是最后的一个命名空间，则需要重新清理Node中所持有的Thread
         if (namespaceMethodHookMap.isEmpty()) {
-            for (int index = 0; index < selfCallBarrier.nodeArray.length; index++) {
-                selfCallBarrier.nodeArray[index] = new SelfCallBarrier.Node();
-            }
+            selfCallBarrier.cleanAndInit();
         }
 
+    }
+
+
+    // 全局序列
+    private static final AtomicInteger sequenceRef = new AtomicInteger(1000);
+
+    /**
+     * 生成全局唯一序列，
+     * 在JVM-SANDBOX中允许多个命名空间的存在，不同的命名空间下listenerId/objectId将会被植入到同一份字节码中，
+     * 此时需要用全局的ID生成策略规避不同的命名空间
+     *
+     * @return 全局自增序列
+     */
+    public static int nextSequence() {
+        return sequenceRef.getAndIncrement();
+    }
+
+
+    private static void handleException(Throwable cause) throws Throwable {
+        if (isSpyThrowException) {
+            throw cause;
+        } else {
+            cause.printStackTrace();
+        }
     }
 
     private static final SelfCallBarrier selfCallBarrier = new SelfCallBarrier();
@@ -93,24 +124,52 @@ public class Spy {
                                              final String desc,
                                              final String namespace,
                                              final int listenerId) throws Throwable {
-        namespaceMethodHookMap.get(namespace).ON_CALL_BEFORE_METHOD.invoke(null, listenerId, lineNumber, owner, name, desc);
+        try {
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null != hook) {
+                hook.ON_CALL_BEFORE_METHOD.invoke(null, listenerId, lineNumber, owner, name, desc);
+            }
+        } catch (Throwable cause) {
+            handleException(cause);
+        }
     }
 
     public static void spyMethodOnCallReturn(final String namespace,
                                              final int listenerId) throws Throwable {
-        namespaceMethodHookMap.get(namespace).ON_CALL_RETURN_METHOD.invoke(null, listenerId);
+        try {
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null != hook) {
+                hook.ON_CALL_RETURN_METHOD.invoke(null, listenerId);
+            }
+        } catch (Throwable cause) {
+            handleException(cause);
+        }
     }
 
     public static void spyMethodOnCallThrows(final String throwException,
                                              final String namespace,
                                              final int listenerId) throws Throwable {
-        namespaceMethodHookMap.get(namespace).ON_CALL_THROWS_METHOD.invoke(null, listenerId, throwException);
+        try {
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null != hook) {
+                hook.ON_CALL_THROWS_METHOD.invoke(null, listenerId, throwException);
+            }
+        } catch (Throwable cause) {
+            handleException(cause);
+        }
     }
 
     public static void spyMethodOnLine(final int lineNumber,
                                        final String namespace,
                                        final int listenerId) throws Throwable {
-        namespaceMethodHookMap.get(namespace).ON_LINE_METHOD.invoke(null, listenerId, lineNumber);
+        try {
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null != hook) {
+                hook.ON_LINE_METHOD.invoke(null, listenerId, lineNumber);
+            }
+        } catch (Throwable cause) {
+            handleException(cause);
+        }
     }
 
     public static Ret spyMethodOnBefore(final Object[] argumentArray,
@@ -127,8 +186,15 @@ public class Spy {
         }
         final SelfCallBarrier.Node node = selfCallBarrier.enter(thread);
         try {
-            return (Ret) namespaceMethodHookMap.get(namespace).ON_BEFORE_METHOD.invoke(null,
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null == hook) {
+                return Ret.RET_NONE;
+            }
+            return (Ret) hook.ON_BEFORE_METHOD.invoke(null,
                     listenerId, targetClassLoaderObjectID, SPY_RET_CLASS, javaClassName, javaMethodName, javaMethodDesc, target, argumentArray);
+        } catch (Throwable cause) {
+            handleException(cause);
+            return Ret.RET_NONE;
         } finally {
             selfCallBarrier.exit(thread, node);
         }
@@ -143,7 +209,14 @@ public class Spy {
         }
         final SelfCallBarrier.Node node = selfCallBarrier.enter(thread);
         try {
-            return (Ret) namespaceMethodHookMap.get(namespace).ON_RETURN_METHOD.invoke(null, listenerId, SPY_RET_CLASS, object);
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null == hook) {
+                return Ret.RET_NONE;
+            }
+            return (Ret) hook.ON_RETURN_METHOD.invoke(null, listenerId, SPY_RET_CLASS, object);
+        } catch (Throwable cause) {
+            handleException(cause);
+            return Ret.RET_NONE;
         } finally {
             selfCallBarrier.exit(thread, node);
         }
@@ -158,7 +231,14 @@ public class Spy {
         }
         final SelfCallBarrier.Node node = selfCallBarrier.enter(thread);
         try {
-            return (Ret) namespaceMethodHookMap.get(namespace).ON_THROWS_METHOD.invoke(null, listenerId, SPY_RET_CLASS, throwable);
+            final MethodHook hook = namespaceMethodHookMap.get(namespace);
+            if (null == hook) {
+                return Ret.RET_NONE;
+            }
+            return (Ret) hook.ON_THROWS_METHOD.invoke(null, listenerId, SPY_RET_CLASS, throwable);
+        } catch (Throwable cause) {
+            handleException(cause);
+            return Ret.RET_NONE;
         } finally {
             selfCallBarrier.exit(thread, node);
         }
@@ -214,6 +294,7 @@ public class Spy {
 
         public static class Node {
             private final Thread thread;
+            private final ReentrantLock lock;
             private Node pre;
             private Node next;
 
@@ -222,7 +303,12 @@ public class Spy {
             }
 
             Node(final Thread thread) {
+                this(thread, null);
+            }
+
+            Node(final Thread thread, final ReentrantLock lock) {
                 this.thread = thread;
+                this.lock = lock;
             }
 
         }
@@ -247,21 +333,36 @@ public class Spy {
             top.next = node;
         }
 
-        static final int THREAD_LOCAL_ARRAY_LENGTH = 1024;
+        static final int THREAD_LOCAL_ARRAY_LENGTH = 512;
 
         final Node[] nodeArray = new Node[THREAD_LOCAL_ARRAY_LENGTH];
 
         SelfCallBarrier() {
-            // init root node
+            cleanAndInit();
+        }
+
+        Node createTopNode() {
+            return new Node(null, new ReentrantLock());
+        }
+
+        void cleanAndInit() {
             for (int i = 0; i < THREAD_LOCAL_ARRAY_LENGTH; i++) {
-                nodeArray[i] = new Node();
+                nodeArray[i] = createTopNode();
             }
         }
 
+        int abs(int val) {
+            return val < 0
+                    ? val * -1
+                    : val;
+        }
+
         boolean isEnter(Thread thread) {
-            final Node top = nodeArray[thread.hashCode() % THREAD_LOCAL_ARRAY_LENGTH];
+            final Node top = nodeArray[abs(thread.hashCode()) % THREAD_LOCAL_ARRAY_LENGTH];
             Node node = top;
-            synchronized (top) {
+            try {
+                // spin for lock
+                while (!top.lock.tryLock()) ;
                 while (null != node.next) {
                     node = node.next;
                     if (thread == node.thread) {
@@ -269,22 +370,30 @@ public class Spy {
                     }
                 }
                 return false;
-            }//sync
+            } finally {
+                top.lock.unlock();
+            }
         }
 
         Node enter(Thread thread) {
-            final Node top = nodeArray[thread.hashCode() % THREAD_LOCAL_ARRAY_LENGTH];
+            final Node top = nodeArray[abs(thread.hashCode()) % THREAD_LOCAL_ARRAY_LENGTH];
             final Node node = new Node(thread);
-            synchronized (top) {
+            try {
+                while (!top.lock.tryLock()) ;
                 insert(top, node);
+            } finally {
+                top.lock.unlock();
             }
             return node;
         }
 
         void exit(Thread thread, Node node) {
-            final Node top = nodeArray[thread.hashCode() % THREAD_LOCAL_ARRAY_LENGTH];
-            synchronized (top) {
+            final Node top = nodeArray[abs(thread.hashCode()) % THREAD_LOCAL_ARRAY_LENGTH];
+            try {
+                while (!top.lock.tryLock()) ;
                 delete(node);
+            } finally {
+                top.lock.unlock();
             }
         }
 
@@ -311,6 +420,13 @@ public class Spy {
                           final Method on_call_before_method,
                           final Method on_call_return_method,
                           final Method on_call_throws_method) {
+            assert null != on_before_method;
+            assert null != on_return_method;
+            assert null != on_throws_method;
+            assert null != on_line_method;
+            assert null != on_call_before_method;
+            assert null != on_call_return_method;
+            assert null != on_call_throws_method;
             this.ON_BEFORE_METHOD = on_before_method;
             this.ON_RETURN_METHOD = on_return_method;
             this.ON_THROWS_METHOD = on_throws_method;
