@@ -43,11 +43,6 @@ public class CatLogbackModule extends CatLogModule {
                 .onClass("ch.qos.logback.classic.Logger")
                 .onBehavior("callAppenders")
                 .onWatch(new AdviceListener() {
-
-                    @Override
-                    public void before(Advice advice) {
-                    }
-
                     @Override
                     public void afterReturning(Advice advice) {
                         try {
@@ -72,11 +67,6 @@ public class CatLogbackModule extends CatLogModule {
                         } catch (Exception ex) {
                             //黑洞
                         }
-                    }
-
-                    @Override
-                    public void afterThrowing(Advice advice) {
-                        // do nothing
                     }
                 });
     }

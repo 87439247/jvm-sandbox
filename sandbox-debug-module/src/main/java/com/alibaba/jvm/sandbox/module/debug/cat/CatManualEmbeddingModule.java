@@ -38,24 +38,13 @@ public class CatManualEmbeddingModule extends CatModule {
                 .withParameterTypes("java.lang.String")
 
                 .onWatch(new AdviceListener() {
-
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        // nothing
-                    }
-
-                    @Override
-                    public void afterReturning(Advice advice) {
                         int count = 1;
                         if (advice.getParameterArray().length >= 2) {
                             count = (int) advice.getParameterArray()[1];
                         }
                         Cat.logMetricForCount((String) advice.getParameterArray()[0], count);
-                    }
-
-                    @Override
-                    public void afterThrowing(Advice advice) {
-                        // nothing
                     }
                 });
 
@@ -66,20 +55,9 @@ public class CatManualEmbeddingModule extends CatModule {
                 .withParameterTypes("java.lang.String", long.class.getName())
 
                 .onWatch(new AdviceListener() {
-
                     @Override
                     public void before(Advice advice) throws Throwable {
-                        // nothing
-                    }
-
-                    @Override
-                    public void afterReturning(Advice advice) {
                         Cat.logMetricForDuration((String) advice.getParameterArray()[0], (int) advice.getParameterArray()[1]);
-                    }
-
-                    @Override
-                    public void afterThrowing(Advice advice) {
-                        // nothing
                     }
                 });
     }

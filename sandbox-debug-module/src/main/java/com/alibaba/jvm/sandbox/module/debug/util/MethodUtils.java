@@ -13,7 +13,7 @@ public class MethodUtils {
     /**
      * 方法缓存
      */
-    static ConcurrentHashMap<Long, Method> methods = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Long, Method> methods = new ConcurrentHashMap<>();
 
     /*
      * 泛型转换方法调用

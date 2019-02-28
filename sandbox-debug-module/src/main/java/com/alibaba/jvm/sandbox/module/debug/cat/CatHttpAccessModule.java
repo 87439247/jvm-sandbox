@@ -15,12 +15,12 @@ import com.dianping.cat.util.UrlParser;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
@@ -41,38 +41,35 @@ public class CatHttpAccessModule extends CatModule {
     private boolean booleanEnableDetail = false;
 
     @Http("/enable-detail")
-    public void watch(final HttpServletRequest req,
-                      final HttpServletResponse resp) throws IOException {
+    public void watch(final Map<String, String> param, final PrintWriter writer) throws IOException {
         try {
-            String enableDetail = req.getParameter("enableDetail");
+            String enableDetail = getParameter(param, "enableDetail");
             if (enableDetail != null) {
                 booleanEnableDetail = enableDetail.equals("yes") || enableDetail.equals("true");
-                resp.getWriter().print("enable http detail log ok");
+                writer.print("enable http detail log ok");
             } else {
                 booleanEnableDetail = false;
-                resp.getWriter().print("disabled http detail log [yes is enable]");
+                writer.print("disabled http detail log [yes is enable]");
             }
         } catch (Exception e) {
-            resp.getWriter().print("error");
+            writer.print("error");
             stLogger.error("设置http详细信息错误", e);
         }
     }
 
-
-    private static Set<String> excludeUrls = new HashSet<>();
-
-    private static Set<String> excludePrefixes = new HashSet<>();
+    private static Set<String> excludeSuffix = new HashSet<>();
 
     static {
-        excludeUrls.add("favicon.ico");
-        excludePrefixes.add(".jpg");
-        excludePrefixes.add(".jpeg");
-        excludePrefixes.add(".png");
-        excludePrefixes.add(".gif");
-        excludePrefixes.add(".js");
-        excludePrefixes.add(".css");
-        excludePrefixes.add(".woff");
-        excludePrefixes.add(".woff2");
+        excludeSuffix.add(".ico");
+        excludeSuffix.add(".jpg");
+        excludeSuffix.add(".txt");
+        excludeSuffix.add(".jpeg");
+        excludeSuffix.add(".png");
+        excludeSuffix.add(".gif");
+        excludeSuffix.add(".js");
+        excludeSuffix.add(".css");
+        excludeSuffix.add(".woff");
+        excludeSuffix.add(".woff2");
     }
 
     @Override
@@ -122,17 +119,12 @@ public class CatHttpAccessModule extends CatModule {
                      */
                     private boolean excludeURI(String uri) {
                         try {
-                            boolean exclude = excludeUrls.contains(uri);
-
-                            if (!exclude) {
-                                for (String prefix : excludePrefixes) {
-                                    if (uri.endsWith(prefix)) {
-                                        exclude = true;
-                                        break;
-                                    }
+                            for (String prefix : excludeSuffix) {
+                                if (uri.endsWith(prefix)) {
+                                    return true;
                                 }
                             }
-                            return exclude;
+                            return false;
                         } catch (Exception e) {
                             return false;
                         }
@@ -140,7 +132,15 @@ public class CatHttpAccessModule extends CatModule {
 
                     final String SEP = "-----------------------\n";
 
-                    private void logRequestInfo(Object req, int responseCode) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+                    /**
+                     * 记录异常请求的url详细信息
+                     * @param req http servlet request
+                     * @param responseCode http status code
+                     * @throws NoSuchMethodException
+                     * @throws IllegalAccessException
+                     * @throws InvocationTargetException
+                     */
+                    private void logAbnormalRequestInfo(Object req, int responseCode) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
                         StringBuilder builder = new StringBuilder("\r\n");
                         Enumeration headerNames = invokeMethod(req, "getHeaderNames");
                         while (headerNames.hasMoreElements()) {
@@ -218,14 +218,14 @@ public class CatHttpAccessModule extends CatModule {
                                 } else {
                                     if (status == 200) {
                                         if (booleanEnableDetail) {
-                                            logRequestInfo(req, status);
+                                            logAbnormalRequestInfo(req, status);
                                         }
                                         t.setStatus(Transaction.SUCCESS);
                                     } else if (status >= 500) {
-                                        logRequestInfo(req, status);
+                                        logAbnormalRequestInfo(req, status);
                                         t.setStatus(status + "");
                                     } else { //301 302 400 404 +
-                                        logRequestInfo(req, status);
+                                        logAbnormalRequestInfo(req, status);
                                         t.setStatus(Transaction.SUCCESS);
                                     }
                                 }

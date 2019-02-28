@@ -58,7 +58,8 @@ public class CatElasticJobModule extends CatModule {
                         Transaction t = advice.attachment();
                         try {
                             Cat.logEvent(getCatType(), t.getName(), Message.SUCCESS, JSON.toJSONString(advice.getParameterArray()[0]));
-                            Cat.logMetricForCount(invokeMethod(advice.getParameterArray()[0], "getJobName"));
+                            StringBuilder metricName = new StringBuilder(getCatType()).append('-').append((String) invokeMethod(advice.getParameterArray()[0], "getJobName"));
+                            Cat.logMetricForCount(metricName.toString());
                             if (advice.getThrowable() != null) {
                                 t.setStatus(advice.getThrowable());
                                 Cat.logError(advice.getThrowable());

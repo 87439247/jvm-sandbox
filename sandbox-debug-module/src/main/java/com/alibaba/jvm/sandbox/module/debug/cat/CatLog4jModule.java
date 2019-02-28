@@ -41,12 +41,6 @@ public class CatLog4jModule extends CatLogModule {
                 .onClass("org.apache.log4j.Category")
                 .onBehavior("callAppenders")
                 .onWatch(new AdviceListener() {
-
-                    @Override
-                    public void before(Advice advice) {
-                        // do nothing
-                    }
-
                     @Override
                     public void afterReturning(Advice advice) {
                         try {
@@ -71,11 +65,6 @@ public class CatLog4jModule extends CatLogModule {
                         } catch (Exception ex) {
                             //黑洞
                         }
-                    }
-
-                    @Override
-                    public void afterThrowing(Advice advice) {
-                        // do nothing
                     }
                 });
     }

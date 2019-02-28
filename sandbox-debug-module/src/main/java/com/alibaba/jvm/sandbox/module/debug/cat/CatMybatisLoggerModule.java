@@ -18,9 +18,9 @@ import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
 import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
 
 /**
- * 基于JDBC的SQL日志
+ * 基于mybatis的日志
  *
- * @author luanjia@taobao.com
+ * @author yuanyue@staff.hexun.com
  */
 @MetaInfServices(Module.class)
 @Information(id = "cat-mybatis-logger", version = "0.0.1", author = "yuanyue@staff.hexun.com")

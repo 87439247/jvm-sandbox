@@ -12,11 +12,6 @@ import com.dianping.cat.message.Transaction;
 import org.kohsuke.MetaInfServices;
 
 import javax.annotation.Resource;
-import java.util.Map;
-
-import static com.alibaba.jvm.sandbox.module.debug.util.CatFinishUtil.finish;
-import static com.alibaba.jvm.sandbox.module.debug.util.MethodUtils.invokeMethod;
-import static com.alibaba.jvm.sandbox.module.debug.util.UrlUtils.rebuildPath;
 
 @MetaInfServices(Module.class)
 @Information(id = "cat-mysql-prepared-statement", version = "0.0.1", author = "yuanyue@staff.hexun.com")

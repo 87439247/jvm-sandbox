@@ -2,16 +2,16 @@ package com.alibaba.jvm.sandbox.module.debug.cat;
 
 import com.alibaba.jvm.sandbox.api.LoadCompleted;
 import com.alibaba.jvm.sandbox.api.Module;
-import com.alibaba.jvm.sandbox.module.debug.HttpSupported;
+import com.alibaba.jvm.sandbox.module.debug.ParamSupported;
 import com.alibaba.jvm.sandbox.module.debug.util.IpUtils;
 import com.dianping.cat.Cat;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class CatModule extends HttpSupported implements Module, LoadCompleted {
+public abstract class CatModule extends ParamSupported implements Module, LoadCompleted {
 
-    public static final String CAT_DOMAIN;
+    static final String CAT_DOMAIN;
 
     static Logger internalLogger = LoggerFactory.getLogger(CatModule.class);
 
@@ -33,10 +33,10 @@ public abstract class CatModule extends HttpSupported implements Module, LoadCom
         Cat.initializeByDomainForce(CAT_DOMAIN);
     }
 
-    protected Logger stLogger = LoggerFactory.getLogger(this.getClass());
+    Logger stLogger = LoggerFactory.getLogger(this.getClass());
 
 
-    public static String getConfigFromEnv(String key, String def) {
+    static String getConfigFromEnv(String key, String def) {
         String value = System.getenv(key);
         if (StringUtils.isBlank(value)) {
             value = System.getProperty(key, def);
