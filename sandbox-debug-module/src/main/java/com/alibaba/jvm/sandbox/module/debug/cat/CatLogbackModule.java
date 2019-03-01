@@ -54,14 +54,14 @@ public class CatLogbackModule extends CatLogModule {
                             String loggerName = invokeMethod(event, "getLoggerName");
                             String threadName = invokeMethod(event, "getThreadName");
                             if (level < errorLevel) {
-                                offer(timeStamp, msg, level, loggerName, threadName, null);
+                                offerAppLog(timeStamp, msg, level, loggerName, threadName, null);
                             } else {
                                 Throwable throwable = null;
                                 Object throwProxy = invokeMethod(event, "getThrowableProxy");
                                 if (throwProxy != null) {
                                     throwable = invokeMethod(throwProxy, "getThrowable");
                                 }
-                                offer(timeStamp, msg, level, loggerName, threadName, throwable);
+                                offerAppLog(timeStamp, msg, level, loggerName, threadName, throwable);
                                 Cat.logError("[ERROR] " + msg, throwable);
                             }
                         } catch (Exception ex) {

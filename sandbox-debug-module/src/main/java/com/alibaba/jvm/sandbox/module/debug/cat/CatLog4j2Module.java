@@ -51,10 +51,10 @@ public class CatLog4j2Module extends CatLogModule {
                             String loggerName = invokeMethod(event, "getLoggerName");
                             String threadName = invokeMethod(event, "getThreadName");
                             if (level < errorLevel) {
-                                offer(timeStamp, msg, level, loggerName, threadName, null);
+                                offerAppLog(timeStamp, msg, level, loggerName, threadName, null);
                             } else {
                                 Throwable throwable = invokeMethod(event, "getThrown");
-                                offer(timeStamp, msg, level, loggerName, threadName, throwable);
+                                offerAppLog(timeStamp, msg, level, loggerName, threadName, throwable);
                                 Cat.logError("[ERROR] " + msg, throwable);
                             }
                         } catch (Exception ex) {

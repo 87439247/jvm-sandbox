@@ -20,13 +20,33 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 public abstract class CatLogModule extends CatModule {
 
-    static DefaultMQProducer mqProducer;
+    private static DefaultMQProducer mqProducer;
 
-    static String rocketmqTopic;
+    /**
+     * app 访问日志 topic
+     */
+    private static String rocketmqLogTopic;
+
+    /**
+     * tomcat 访问日志 topic
+     */
+    private static String rocketmTomcatTopic;
+
+
+    /**
+     * 应用程序日志队列
+     */
+    private ArrayBlockingQueue<AppLogMessage> appLogQueue = new ArrayBlockingQueue<AppLogMessage>(50000);
+
+    /**
+     * tomcat 日志队列
+     */
+    private ArrayBlockingQueue<String> tomcatLogQueue = new ArrayBlockingQueue<String>(50000);
 
     static {
         String rocketmqNameServerAddr = CatModule.getConfigFromEnv("log_rocketmq_addr", "10.4.63.103:9876;10.4.63.104:9876");
-        rocketmqTopic = CatModule.getConfigFromEnv("log_rocketmq_topic", "FILEBEAT-APP");
+        rocketmqLogTopic = CatModule.getConfigFromEnv("log_rocketmq_topic", "FILEBEAT-APP");
+        rocketmTomcatTopic = CatModule.getConfigFromEnv("tomcat_rocketmq_topic", "FILEBEAT-TOMCAT-ACCESS");
         mqProducer = new DefaultMQProducer();
         mqProducer.setNamesrvAddr(rocketmqNameServerAddr);
         mqProducer.setVipChannelEnabled(false);
@@ -55,12 +75,13 @@ public abstract class CatLogModule extends CatModule {
      * {"@timestamp":"2018-12-12T01:51:23.145Z","ip":"10.0.150.159","message":"{\"@timestamp\":\"2018-12-12T09:50:59.635+08:00\",\"@version\":\"1\",\"message\":\"Registering transaction synchronization for JDBC Connection\",\"logger_name\":\"org.springframework.jdbc.datasource.DataSourceUtils\",\"thread_name\":\"catalina-exec-121\",\"level\":\"DEBUG\",\"level_value\":10000}","offset":79276966,"source":"/opt/tomcat/logs/px_all.log","tags":"px-apilesson","type":"log"}
      */
     public CatLogModule() {
+        // app 日志消费进程
         new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
                     try {
-                        LogMessage log = logQueue.take();
+                        AppLogMessage log = appLogQueue.take();
                         LogWrapper wrapper = new LogWrapper();
                         wrapper.setTimestamp(log.getTimestamp());
 
@@ -73,7 +94,32 @@ public abstract class CatLogModule extends CatModule {
                         wrapper.setMessage(message);
                         Message rocketmqMessage = new Message();
                         rocketmqMessage.setTags(CatModule.CAT_DOMAIN);
-                        rocketmqMessage.setTopic(rocketmqTopic);
+                        rocketmqMessage.setTopic(rocketmqLogTopic);
+                        rocketmqMessage.setBody(JSON.toJSONBytes(wrapper));
+                        SendResult sendResult = mqProducer.send(rocketmqMessage);
+                        if (!SendStatus.SEND_OK.equals(sendResult.getSendStatus())) {
+                            stLogger.error("send log to rocketmq error {}", sendResult.getSendStatus().toString());
+                        }
+                    } catch (InterruptedException | MQClientException | RemotingException | MQBrokerException e) {
+                        stLogger.error("send log to rocketmq error", e);
+                    }
+                }
+            }
+        }).start();
+
+        // tomcat 日志消费
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        String tomcatLogMessage = tomcatLogQueue.take();
+                        LogWrapper wrapper = new LogWrapper();
+                        wrapper.setTimestamp(new Date());
+                        wrapper.setMessage(tomcatLogMessage);
+                        Message rocketmqMessage = new Message();
+                        rocketmqMessage.setTags(CatModule.CAT_DOMAIN);
+                        rocketmqMessage.setTopic(rocketmTomcatTopic);
                         rocketmqMessage.setBody(JSON.toJSONBytes(wrapper));
                         SendResult sendResult = mqProducer.send(rocketmqMessage);
                         if (!SendStatus.SEND_OK.equals(sendResult.getSendStatus())) {
@@ -98,30 +144,37 @@ public abstract class CatLogModule extends CatModule {
      * @param throwable
      * @return
      */
-    public boolean offer(long timestamp, String message, int levelValue, String loggerName, String threadName, Throwable throwable) {
-        LogMessage logMessage = new LogMessage();
-        logMessage.setTimestamp(new Date(timestamp));
-        logMessage.setMessage(message);
-        logMessage.setLevelValue(levelValue);
+    protected boolean offerAppLog(long timestamp, String message, int levelValue, String loggerName, String threadName, Throwable throwable) {
+        AppLogMessage appLogMessage = new AppLogMessage();
+        appLogMessage.setTimestamp(new Date(timestamp));
+        appLogMessage.setMessage(message);
+        appLogMessage.setLevelValue(levelValue);
         if (levelValue <= 10000) {
-            logMessage.setLevel("DEBUG");
+            appLogMessage.setLevel("DEBUG");
         } else if (levelValue <= 20000) {
-            logMessage.setLevel("INFO");
+            appLogMessage.setLevel("INFO");
         } else if (levelValue <= 30000) {
-            logMessage.setLevel("WARN");
+            appLogMessage.setLevel("WARN");
         } else {
-            logMessage.setLevel("ERROR");
+            appLogMessage.setLevel("ERROR");
         }
-        logMessage.setLoggerName(loggerName);
-        logMessage.setThreadName(threadName);
-        logMessage.setThrowable(throwable);
-        return logQueue.offer(logMessage);
+        appLogMessage.setLoggerName(loggerName);
+        appLogMessage.setThreadName(threadName);
+        appLogMessage.setThrowable(throwable);
+        return appLogQueue.offer(appLogMessage);
     }
 
+
     /**
-     * queue
+     * 消息入队列
+     *
+     * @param message 消息体
+     * @return 是否入队成功
      */
-    protected ArrayBlockingQueue<LogMessage> logQueue = new ArrayBlockingQueue<LogMessage>(50000);
+    protected boolean offerTomcatLog(String message) {
+        return tomcatLogQueue.offer(message);
+    }
+
 
     public class LogWrapper {
         @JSONField(name = "@timestamp", format = "yyyy-MM-dd'T'HH:mm:ss.SSSZZ")
@@ -163,7 +216,10 @@ public abstract class CatLogModule extends CatModule {
         }
     }
 
-    public class LogMessage {
+    /**
+     * java 应用程序日志消息
+     */
+    public class AppLogMessage {
         @JSONField(name = "@timestamp", format = "yyyy-MM-dd'T'HH:mm:ss.SSSZZ")
         private Date timestamp;
 
