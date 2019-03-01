@@ -25,12 +25,12 @@ public abstract class CatLogModule extends CatModule {
     /**
      * app 访问日志 topic
      */
-    private static String rocketmqLogTopic;
+    private static String rocketmqAppLogTopic;
 
     /**
      * tomcat 访问日志 topic
      */
-    private static String rocketmTomcatTopic;
+    private static String rocketmqTomcatLogTopic;
 
 
     /**
@@ -45,8 +45,8 @@ public abstract class CatLogModule extends CatModule {
 
     static {
         String rocketmqNameServerAddr = CatModule.getConfigFromEnv("log_rocketmq_addr", "10.4.63.103:9876;10.4.63.104:9876");
-        rocketmqLogTopic = CatModule.getConfigFromEnv("log_rocketmq_topic", "FILEBEAT-APP");
-        rocketmTomcatTopic = CatModule.getConfigFromEnv("tomcat_rocketmq_topic", "FILEBEAT-TOMCAT-ACCESS");
+        rocketmqAppLogTopic = CatModule.getConfigFromEnv("app_log_rocketmq_topic", "FILEBEAT-APP");
+        rocketmqTomcatLogTopic = CatModule.getConfigFromEnv("tomcat_log_rocketmq_topic", "FILEBEAT-TOMCAT-ACCESS");
         mqProducer = new DefaultMQProducer();
         mqProducer.setNamesrvAddr(rocketmqNameServerAddr);
         mqProducer.setVipChannelEnabled(false);
@@ -79,12 +79,12 @@ public abstract class CatLogModule extends CatModule {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                internalLogger.info("应用程序日志消费进程启动...");
                 while (true) {
                     try {
                         AppLogMessage log = appLogQueue.take();
                         LogWrapper wrapper = new LogWrapper();
                         wrapper.setTimestamp(log.getTimestamp());
-
                         if (log.getThrowable() != null) {
                             StringWriter writer = new StringWriter();
                             log.getThrowable().printStackTrace(new PrintWriter(writer));
@@ -92,15 +92,8 @@ public abstract class CatLogModule extends CatModule {
                         }
                         String message = JSON.toJSONString(log);
                         wrapper.setMessage(message);
-                        Message rocketmqMessage = new Message();
-                        rocketmqMessage.setTags(CatModule.CAT_DOMAIN);
-                        rocketmqMessage.setTopic(rocketmqLogTopic);
-                        rocketmqMessage.setBody(JSON.toJSONBytes(wrapper));
-                        SendResult sendResult = mqProducer.send(rocketmqMessage);
-                        if (!SendStatus.SEND_OK.equals(sendResult.getSendStatus())) {
-                            stLogger.error("send log to rocketmq error {}", sendResult.getSendStatus().toString());
-                        }
-                    } catch (InterruptedException | MQClientException | RemotingException | MQBrokerException e) {
+                        sendToMq(rocketmqAppLogTopic, wrapper);
+                    } catch (Exception e) {
                         stLogger.error("send log to rocketmq error", e);
                     }
                 }
@@ -111,26 +104,45 @@ public abstract class CatLogModule extends CatModule {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                internalLogger.info("tomcat日志消费进程启动...");
                 while (true) {
                     try {
                         String tomcatLogMessage = tomcatLogQueue.take();
                         LogWrapper wrapper = new LogWrapper();
                         wrapper.setTimestamp(new Date());
                         wrapper.setMessage(tomcatLogMessage);
-                        Message rocketmqMessage = new Message();
-                        rocketmqMessage.setTags(CatModule.CAT_DOMAIN);
-                        rocketmqMessage.setTopic(rocketmTomcatTopic);
-                        rocketmqMessage.setBody(JSON.toJSONBytes(wrapper));
-                        SendResult sendResult = mqProducer.send(rocketmqMessage);
-                        if (!SendStatus.SEND_OK.equals(sendResult.getSendStatus())) {
-                            stLogger.error("send log to rocketmq error {}", sendResult.getSendStatus().toString());
-                        }
-                    } catch (InterruptedException | MQClientException | RemotingException | MQBrokerException e) {
+                        sendToMq(rocketmqTomcatLogTopic, wrapper);
+                    } catch (Exception e) {
                         stLogger.error("send log to rocketmq error", e);
                     }
                 }
             }
         }).start();
+    }
+
+    /**
+     * 发送至rocket mq
+     *
+     * @param topic   topic
+     * @param wrapper 数据信息
+     * @return 发送是否成功
+     */
+    private boolean sendToMq(String topic, LogWrapper wrapper) {
+        try {
+            Message rocketmqMessage = new Message();
+            rocketmqMessage.setTags(CatModule.CAT_DOMAIN);
+            rocketmqMessage.setBody(JSON.toJSONBytes(wrapper));
+            rocketmqMessage.setTopic(topic);
+            SendResult sendResult = mqProducer.send(rocketmqMessage);
+            if (!SendStatus.SEND_OK.equals(sendResult.getSendStatus())) {
+                stLogger.error("send log to rocketmq error {}", sendResult.getSendStatus().toString());
+                return false;
+            }
+        } catch (InterruptedException | MQClientException | RemotingException | MQBrokerException e) {
+            stLogger.error("send log to rocketmq error", e);
+            return false;
+        }
+        return true;
     }
 
     /**
